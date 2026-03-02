@@ -122,8 +122,8 @@ Prerequisite for release publishing:
 
 - `init`: creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config
 - `config`: persists and shows global CLI config (workspace and boards paths)
-- `doctor`: checks host tools, west workspace, and boards repository location (offers automatic clone if boards repo is missing)
-- `update`: runs `git pull` in `tiresias-fw` workspace and `tiresias-boards`
+- `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing)
+- `update`: runs `git pull` in `<workspace>/tiresias-fw` and `tiresias-boards`
 
 ## Tiresias FW Onboarding
 
