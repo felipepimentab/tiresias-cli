@@ -20,13 +20,15 @@ export function registerUpdate(program: Command) {
       const config = await readConfig();
       const workspacePath = await resolveWorkspacePath(options.workspace, config);
       const boardsPath = resolveBoardsPath(options.boardsPath, workspacePath, config);
+      const fwRepoPath = workspacePath ? resolve(workspacePath, "tiresias-fw") : null;
 
-      if (!workspacePath || !boardsPath) {
+      if (!workspacePath || !boardsPath || !fwRepoPath) {
         process.exit(1);
       }
 
-      if (!isGitRepo(workspacePath)) {
-        error(`workspace is not a git repository (${workspacePath})`);
+      if (!isGitRepo(fwRepoPath)) {
+        error(`tiresias-fw repository not found at ${fwRepoPath}`);
+        warn("Expected layout: <workspace>/tiresias-fw");
         process.exit(1);
       }
 
@@ -36,8 +38,8 @@ export function registerUpdate(program: Command) {
       }
 
       try {
-        info(`Updating tiresias-fw in ${workspacePath}...`);
-        await runCommand("git", ["pull"], { cwd: workspacePath, quiet: false });
+        info(`Updating tiresias-fw in ${fwRepoPath}...`);
+        await runCommand("git", ["pull"], { cwd: fwRepoPath, quiet: false });
         success("tiresias-fw updated.");
 
         info(`Updating tiresias-boards in ${boardsPath}...`);
