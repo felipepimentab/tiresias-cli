@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { updateConfig } from "../lib/config";
 import { runCommand } from "../lib/exec";
 import { error, info, success } from "../lib/logger";
 
@@ -66,9 +67,12 @@ export function registerInit(program: Command) {
           quiet: false,
         });
 
+        await updateConfig({ workspacePath, boardsPath });
+
         success("Initialization complete.");
         info(`Workspace: ${workspacePath}`);
         info(`Boards: ${boardsPath}`);
+        info("Persisted workspace and boards paths in CLI config.");
         info("Next: open nRF Connect for VS Code and add the boards path as an extra board root.");
       } catch (err) {
         error(String(err));

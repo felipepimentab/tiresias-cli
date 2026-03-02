@@ -56,7 +56,9 @@ After installation/linking:
 ```bash
 tiresias --help
 tiresias init --help
+tiresias config show
 tiresias doctor
+tiresias update
 ```
 
 Local development (without global link):
@@ -64,7 +66,9 @@ Local development (without global link):
 ```bash
 bun run cli --help
 bun run cli init --help
+bun run cli config show
 bun run cli doctor
+bun run cli update
 ```
 
 ## Build Binaries
@@ -116,8 +120,10 @@ Prerequisite for release publishing:
 
 ## Commands
 
-- `init`: creates the Tiresias west workspace and clones `tiresias-boards` in the same parent directory
-- `doctor`: checks host tools, west workspace, and boards repository location
+- `init`: creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config
+- `config`: persists and shows global CLI config (workspace and boards paths)
+- `doctor`: checks host tools, west workspace, and boards repository location (offers automatic clone if boards repo is missing)
+- `update`: runs `git pull` in `tiresias-fw` workspace and `tiresias-boards`
 
 ## Tiresias FW Onboarding
 
@@ -136,6 +142,8 @@ This creates:
 - `./tiresias-workspace` (west workspace with `tiresias-fw`)
 - `./tiresias-boards` (boards repo, outside workspace)
 
+It also automatically saves these paths in `~/.config/tiresias-cli/config.json`.
+
 2. Add the boards path in the **nRF Connect for VS Code** extension UI as an extra board root.
 
 Reference tutorial: [How to add board roots in NCS extension](https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629)
@@ -146,7 +154,14 @@ Reference tutorial: [How to add board roots in NCS extension](https://youtu.be/V
 tiresias doctor --workspace ./tiresias-workspace --boards-path ./tiresias-boards
 ```
 
-You can also set environment variables instead of passing flags every time:
+Because `init` persists config automatically, you can now run:
+
+```bash
+tiresias config show
+tiresias doctor
+```
+
+You can still set environment variables to override defaults:
 
 ```bash
 export TIRESIAS_WORKSPACE="$HOME/path/to/tiresias-workspace"
@@ -154,7 +169,26 @@ export TIRESIAS_BOARDS_PATH="$HOME/path/to/tiresias-boards"
 tiresias doctor
 ```
 
+Manually persist values globally (only needed to change existing config):
+
+```bash
+tiresias config set --workspace ./tiresias-workspace --boards-path ./tiresias-boards
+tiresias config show
+```
+
 The doctor command expects boards to be outside the west workspace.
+
+Resolution precedence for workspace/boards paths:
+1. CLI flags (`--workspace`, `--boards-path`)
+2. Environment variables (`TIRESIAS_WORKSPACE`, `TIRESIAS_BOARDS_PATH`)
+3. Persisted config file (`~/.config/tiresias-cli/config.json`)
+4. Automatic detection/defaults
+
+Update both repositories:
+
+```bash
+tiresias update --workspace ./tiresias-workspace --boards-path ./tiresias-boards
+```
 
 ## Example
 

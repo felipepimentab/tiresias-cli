@@ -2,8 +2,10 @@
 
 import { Command } from "commander";
 import packageJson from "../package.json";
+import { registerConfig } from "./commands/config";
 import { registerDoctor } from "./commands/doctor";
 import { registerInit } from "./commands/init";
+import { registerUpdate } from "./commands/update";
 
 const program = new Command();
 
@@ -12,7 +14,9 @@ program
   .description("Tiresias firmware development environment checker")
   .version(packageJson.version);
 
+registerConfig(program);
 registerDoctor(program);
 registerInit(program);
+registerUpdate(program);
 
 await program.parseAsync();
