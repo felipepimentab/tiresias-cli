@@ -69,7 +69,7 @@ export function registerInit(program: Command) {
         success("Initialization complete.");
         info(`Workspace: ${workspacePath}`);
         info(`Boards: ${boardsPath}`);
-        info("Next: open nRF Connect for VS Code and add the boards path as an extra board source.");
+        info("Next: open nRF Connect for VS Code and add the boards path as an extra board root.");
       } catch (err) {
         error(String(err));
         process.exit(1);

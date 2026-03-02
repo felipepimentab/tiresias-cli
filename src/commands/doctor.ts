@@ -135,7 +135,7 @@ function checkBoardsPath(boardsPathOption: string | undefined, workspacePath: st
 
   success(`boards repository found (${boardsPath})`);
   info(
-    "Reminder: add this path in the nRF Connect for VS Code extension UI as an extra board source."
+    "Reminder: add this path in the nRF Connect for VS Code extension UI as an extra board root."
   );
 }
 

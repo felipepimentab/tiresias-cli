@@ -36,7 +36,7 @@ if [[ ":${PATH}:" != *":${BUN_BIN}:"* ]]; then
   echo "  export PATH=\"\$HOME/.bun/bin:\$PATH\""
   echo
   echo "Then reload your shell:"
-  echo "  source ~/.zshrc"
+  echo "  source ~/.zshrc  # or source ~/.bashrc"
 fi
 
 echo
