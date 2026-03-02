@@ -1,8 +1,16 @@
 {
   "name": "tiresias-cli",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "tiresias": "src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "cli": "bun run src/index.ts",
+    "install:local": "bash scripts/install-local.sh"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
