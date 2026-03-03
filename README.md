@@ -9,6 +9,12 @@ CLI helper focused on validating development environment setup for Tiresias Firm
 - On macOS, recommended install method: `brew install bun`
 - macOS or Linux shell (`zsh`/`bash`)
 
+### Install via Homebrew
+
+```bash
+brew install felipepimentab/tiresias/tiresias-cli
+```
+
 ### Option 1: One-command install script (recommended)
 
 From the project root:
