@@ -120,7 +120,7 @@ Prerequisite for release publishing:
 
 ## Commands
 
-- `init`: creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config
+- `init`: creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
 - `config`: persists and shows global CLI config (workspace and boards paths)
 - `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing)
 - `update`: runs `git pull` in `<workspace>/tiresias-fw` and `tiresias-boards`
@@ -143,6 +143,16 @@ This creates:
 - `./tiresias-boards` (boards repo, outside workspace)
 
 It also automatically saves these paths in `~/.config/tiresias-cli/config.json`.
+
+Optional `init` flags:
+- `--force`: removes existing workspace/boards directories and recreates them.
+- `--skip-west-update`: skips `west update` and prints a reminder to run it manually.
+
+`init` safeguards run before cloning:
+- checks persisted config paths to detect existing `tiresias-fw` / `tiresias-boards` repos.
+- checks target parent path for conflicting repository layouts.
+- stops by default when conflicts are found.
+- with `--force`, continues and overwrites target workspace/boards directories.
 
 2. Add the boards path in the **nRF Connect for VS Code** extension UI as an extra board root.
 
