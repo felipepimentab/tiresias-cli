@@ -1,81 +1,42 @@
-# tiresias-cli
+# Tiresias CLI
 CLI helper focused on validating development environment setup for Tiresias Firmware.
 
-## Install Locally
+## Installing
 
-### Prerequisites
+### With Homebrew (recommended)
 
-- Bun installed: [https://bun.sh](https://bun.sh)
-- On macOS, recommended install method: `brew install bun`
-- macOS or Linux shell (`zsh`/`bash`)
+This is the recommended installation method for end users.
 
-### Install via Homebrew
+Prerequisite:
+- Homebrew installed
+
+Install:
 
 ```bash
 brew install felipepimentab/tiresias/tiresias-cli
 ```
 
-### Option 1: One-command install script (recommended)
+### Download binary
 
-From the project root:
+Alternatively, pre-compiled binaries for Mac, Windows and Linux are available on the releases page.
 
-```bash
-bun run install:local
-```
 
-This script will:
-- install dependencies (`bun install`)
-- link the CLI globally (`bun link`)
-- remind you to add `~/.bun/bin` to your `PATH` if needed
+## Runing Locally (Development)
 
-### Option 2: Manual install
+Use this mode for local development/testing from this repository.
 
-From the project root:
+Prerequisites:
+- [Bun](https://bun.com) installed
+- macOS or Linux shell (`zsh`/`bash`)
+
+Clone the repository and, from its root, run:
 
 ```bash
 bun install
-bun link
 ```
 
-If `tiresias` is not found after linking, add this to your shell config (`~/.zshrc` or `~/.bashrc`):
-
-```bash
-export PATH="$HOME/.bun/bin:$PATH"
-```
-
-Reload shell config:
-
-```bash
-source ~/.zshrc  # or source ~/.bashrc
-```
-
-Verify:
-
-```bash
-tiresias --help
-```
-
-## Run
-
-After installation/linking:
-
-```bash
-tiresias --help
-tiresias init --help
-tiresias config show
-tiresias doctor
-tiresias update
-```
-
-Local development (without global link):
-
-```bash
-bun run cli --help
-bun run cli init --help
-bun run cli config show
-bun run cli doctor
-bun run cli update
-```
+> [!TIP]
+> This does not add `tiresias` globally to your PATH and avoids conflicts with the Homebrew-installed production binary.
 
 ## Build Binaries
 
