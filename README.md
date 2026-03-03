@@ -120,10 +120,75 @@ Prerequisite for release publishing:
 
 ## Commands
 
-- `init`: creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
+- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
 - `config`: persists and shows global CLI config (workspace and boards paths)
 - `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing)
 - `update`: runs `git pull` in `<workspace>/tiresias-fw` and `tiresias-boards`
+
+## Command Reference
+
+### `tiresias init`
+
+Initialize local repositories and configure CLI memory.
+
+Options:
+- `--parent <path>`: parent directory where workspace and boards repositories are created.
+- `--workspace-name <name>`: workspace directory name (default `tiresias-workspace`).
+- `--boards-name <name>`: boards directory name (default `tiresias-boards`).
+- `--branch <name>`: branch used for `tiresias-fw` manifest repo (default `main`).
+- `--force`: overwrite conflicting workspace/boards directories.
+- `--skip-west-update`: skip `west update` and print reminder.
+
+Behavior:
+- checks required dependencies before cloning.
+- on macOS, offers `[Y/n]` Homebrew-based installs for missing tools (and prompts to install Homebrew if missing).
+- on non-macOS, provides official installation links for missing tools.
+- runs preflight safeguards using both filesystem checks and persisted config values.
+- clones `tiresias-fw` via `west init`.
+- optionally runs `west update`.
+- clones `tiresias-boards`.
+- persists `workspacePath` and `boardsPath` in config.
+
+### `tiresias config`
+
+Manage persisted configuration (`~/.config/tiresias-cli/config.json`).
+
+Subcommands:
+- `tiresias config show`: prints config file path and persisted values.
+- `tiresias config set --workspace <path> --boards-path <path>`: updates one or both persisted values.
+
+### `tiresias doctor`
+
+Validate local development environment and repositories.
+
+Options:
+- `--workspace <path>`: west workspace path.
+- `--boards-path <path>`: path to `tiresias-boards` repository.
+
+Checks:
+- required host tools (`west`, `cmake`, `python3`, `nrfutil`, `segger-jlink`, `nrfjprog`).
+- nRF Connect for Desktop installation.
+- NCS toolchain version `v3.0.1` via `nrfutil toolchain-manager`.
+- workspace validity (`.west` presence).
+- boards repository path and location (outside workspace).
+
+Prompts:
+- offers Homebrew installation for missing tools on macOS.
+- shows official installation links on non-macOS.
+- offers automatic clone for missing `tiresias-boards`.
+
+### `tiresias update`
+
+Pull latest changes for both repositories.
+
+Options:
+- `--workspace <path>`: west workspace path.
+- `--boards-path <path>`: path to `tiresias-boards`.
+
+Behavior:
+- resolves `tiresias-fw` at `<workspace>/tiresias-fw`.
+- runs `git pull` in both `<workspace>/tiresias-fw` and `tiresias-boards`.
+- updates persisted config with resolved paths after successful update.
 
 ## Tiresias FW Onboarding
 
@@ -147,6 +212,17 @@ It also automatically saves these paths in `~/.config/tiresias-cli/config.json`.
 Optional `init` flags:
 - `--force`: removes existing workspace/boards directories and recreates them.
 - `--skip-west-update`: skips `west update` and prints a reminder to run it manually.
+
+`init` dependency bootstrap includes checks for:
+- `git`
+- `west`
+- `cmake`
+- `python3`
+- `nrfutil`
+- `segger-jlink` (`JLinkExe`)
+- `nordic-nrf-command-line-tools` (`nrfjprog`)
+- `nRF Connect for Desktop`
+- NCS toolchain version `v3.0.1` via `nrfutil toolchain-manager`
 
 `init` safeguards run before cloning:
 - checks persisted config paths to detect existing `tiresias-fw` / `tiresias-boards` repos.
@@ -199,6 +275,32 @@ Update both repositories:
 ```bash
 tiresias update --workspace ./tiresias-workspace --boards-path ./tiresias-boards
 ```
+
+## Testing
+
+Run all tests:
+
+```bash
+bun run test
+```
+
+Watch mode:
+
+```bash
+bun run test:watch
+```
+
+Coverage:
+
+```bash
+bun run test:coverage
+```
+
+Test suite overview:
+- `tests/config.command.test.ts`: persisted config behavior (`show`, `set`, validation).
+- `tests/init.command.test.ts`: init safeguards, `--force`, `--skip-west-update`, config persistence.
+- `tests/update.command.test.ts`: repository path resolution and update execution targets.
+- `tests/doctor.command.test.ts`: toolchain checks, board/workspace checks, prompt behavior in non-interactive mode.
 
 ## Example
 
