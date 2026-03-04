@@ -22,9 +22,9 @@ Alternatively, pre-compiled binaries for Mac, Windows and Linux are available on
 
 ## Commands
 
-- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones `tiresias-boards` into a sibling `boards` directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
+- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones the `tiresias-boards` repository into a sibling `boards` directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
 - `config`: persists and shows global CLI config (workspace and boards paths)
-- `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing)
+- `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing). Supports `--json` for machine-readable output.
 - `update`: runs `git pull` in `<workspace>/tiresias-fw` and `boards`
 
 ## Command Reference
@@ -69,6 +69,7 @@ Validate local development environment and repositories.
 Options:
 - `--workspace <path>`: west workspace path.
 - `--boards-path <path>`: path to boards repository.
+- `--json`: structured JSON report output (no interactive actions).
 
 Checks:
 - required host tools (`west`, `cmake`, `python3`, `nrfutil`, `segger-jlink`, `nrfjprog`).
@@ -83,6 +84,9 @@ Prompts:
 - offers automatic clone for missing `tiresias-boards`.
 - auto-detects VS Code/Trae settings and asks `[Y/n]` before writing `nrf-connect.boardRoots`.
 - prints the manual setup tutorial link if you choose not to auto-write settings.
+
+JSON mode:
+- `tiresias doctor --json` prints checks, path resolution sources, and overall status.
 
 ### `tiresias update`
 
@@ -182,6 +186,8 @@ Resolution precedence for workspace/boards paths:
 3. Persisted config file (`~/.config/tiresias-cli/config.json`)
 4. Automatic detection/defaults
 
+The CLI logs which source resolved each path so behavior is explicit.
+
 Update both repositories:
 
 ```bash
@@ -208,11 +214,27 @@ Coverage:
 bun run test:coverage
 ```
 
+Lint + typecheck:
+
+```bash
+bun run lint
+bun run typecheck
+```
+
+Changed-files hints (for CI/local triage):
+
+```bash
+bun run ci:changed-tests-hints
+```
+
 Test suite overview:
 - `tests/config.command.test.ts`: persisted config behavior (`show`, `set`, validation).
 - `tests/init.command.test.ts`: init safeguards, `--force`, `--skip-west-update`, config persistence.
 - `tests/update.command.test.ts`: repository path resolution and update execution targets.
-- `tests/doctor.command.test.ts`: toolchain checks, board/workspace checks, prompt behavior in non-interactive mode.
+- `tests/doctor.command.test.ts`: toolchain checks, board/workspace checks, prompt behavior, and `--json`.
+- `tests/path-resolution.lib.test.ts`: table-driven path precedence checks.
+- `tests/editor-settings.lib.test.ts`: table-driven VS Code/Trae settings path detection by OS.
+- `tests/help.snapshot.test.ts`: snapshot checks for command help output.
 
 ## Example
 
@@ -232,6 +254,13 @@ Clone the repository and, from its root, run:
 
 ```bash
 bun install
+```
+
+Run locally:
+
+```bash
+bun run cli --help
+bun run cli doctor
 ```
 
 > [!TIP]
@@ -283,3 +312,11 @@ bun run release:major
 
 Prerequisite for release publishing:
 - GitHub CLI installed and authenticated (`gh auth login`)
+
+## Additional Docs
+- [Agent instructions](AGENTS.md)
+- [CLI command contracts](docs/cli-spec.md)
+- [Development setup](docs/dev-setup.md)
+- [Testing strategy](docs/test-strategy.md)
+- [Release playbook](docs/release-playbook.md)
+- [Contributing guide](CONTRIBUTING.md)
