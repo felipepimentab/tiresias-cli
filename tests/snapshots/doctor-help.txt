@@ -1,0 +1,10 @@
+Usage: tiresias doctor [options]
+
+Check development environment
+
+Options:
+  -w, --workspace <path>    West workspace path
+  -B, --boards-path <path>  Path to boards repository (outside workspace)
+  --json                    Output structured JSON report and skip interactive
+                            actions (default: false)
+  -h, --help                display help for command

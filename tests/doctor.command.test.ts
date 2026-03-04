@@ -1,14 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import {
-  ensureDir,
-  makeTempDir,
-  readText,
-  removeDir,
-  runCli,
-  writeExecutable,
-} from "./helpers";
+import { ensureDir, makeTempDir, removeDir, runCli, writeExecutable } from "./helpers";
 
 const tempDirs: string[] = [];
 
@@ -32,21 +25,21 @@ case "\${1:-}" in
   topdir) echo "$PWD";;
   *) echo "west-ok";;
 esac
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "cmake"),
     `#!/usr/bin/env bash
 echo "cmake version 4.2.3"
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "python3"),
     `#!/usr/bin/env bash
 echo "Python 3.14.3"
-`
+`,
   );
 
   writeExecutable(
@@ -70,21 +63,21 @@ if [[ "\${1:-}" == "install" && "\${2:-}" == "toolchain-manager" ]]; then
   exit 0
 fi
 echo "ok"
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "JLinkExe"),
     `#!/usr/bin/env bash
 echo "SEGGER J-Link Commander"
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "nrfjprog"),
     `#!/usr/bin/env bash
 echo "nrfjprog version: 10.24.2 external"
-`
+`,
   );
 
   writeExecutable(
@@ -92,7 +85,7 @@ echo "nrfjprog version: 10.24.2 external"
     `#!/usr/bin/env bash
 echo "$PWD :: $*" >> "\${BREW_LOG:?}"
 exit 0
-`
+`,
   );
 
   return { binDir, brewLog };
@@ -109,7 +102,7 @@ describe("doctor command", () => {
     const root = makeTempDir("tiresias-doctor-success-");
     tempDirs.push(root);
     const workspace = resolve(root, "tiresias-workspace");
-    const boards = resolve(root, "tiresias-boards");
+    const boards = resolve(root, "boards");
     const home = resolve(root, "home");
     const xdgConfigHome = resolve(root, "xdg");
 
@@ -118,21 +111,20 @@ describe("doctor command", () => {
     ensureDir(resolve(home, "Applications", "nRF Connect for Desktop.app"));
     const { binDir } = setupFakeDoctorToolchain(root);
 
-    const result = runCli(
-      ["doctor", "--workspace", workspace, "--boards-path", boards],
-      {
-        env: {
-          HOME: home,
-          XDG_CONFIG_HOME: xdgConfigHome,
-          PATH: `${binDir}:${process.env.PATH ?? ""}`,
-        },
-      }
-    );
+    const result = runCli(["doctor", "--workspace", workspace, "--boards-path", boards], {
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain("nRF Connect SDK toolchain v3.0.1 found");
     expect(result.output).toContain("west workspace found");
     expect(result.output).toContain("boards repository found");
+    expect(result.output).toContain("workspace path:");
+    expect(result.output).toContain("source: CLI flag");
     expect(result.output).toContain("Done.");
   });
 
@@ -150,22 +142,17 @@ describe("doctor command", () => {
     ensureEditorSettingsDirs(home);
     const { binDir } = setupFakeDoctorToolchain(root);
 
-    const result = runCli(
-      ["doctor", "--workspace", workspace, "--boards-path", boards],
-      {
-        env: {
-          HOME: home,
-          XDG_CONFIG_HOME: xdgConfigHome,
-          PATH: `${binDir}:${process.env.PATH ?? ""}`,
-        },
-      }
-    );
+    const result = runCli(["doctor", "--workspace", workspace, "--boards-path", boards], {
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
-    expect(result.output).toContain("Interactive prompt skipped");
-    expect(result.output).toContain(
-      "https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629"
-    );
+    expect(result.output).toContain("Prompt skipped (non-interactive terminal). Defaulting to No.");
+    expect(result.output).toContain("https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629");
   });
 
   it("parses JSON5-like editor settings without parse errors", () => {
@@ -181,7 +168,7 @@ describe("doctor command", () => {
       "Application Support",
       "Code",
       "User",
-      "settings.json"
+      "settings.json",
     );
 
     ensureDir(resolve(workspace, ".west"));
@@ -197,20 +184,17 @@ describe("doctor command", () => {
   },
 }
 `,
-      "utf8"
+      "utf8",
     );
     const { binDir } = setupFakeDoctorToolchain(root);
 
-    const result = runCli(
-      ["doctor", "--workspace", workspace, "--boards-path", boards],
-      {
-        env: {
-          HOME: home,
-          XDG_CONFIG_HOME: xdgConfigHome,
-          PATH: `${binDir}:${process.env.PATH ?? ""}`,
-        },
-      }
-    );
+    const result = runCli(["doctor", "--workspace", workspace, "--boards-path", boards], {
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.output).not.toContain("Failed to parse settings file");
@@ -228,27 +212,24 @@ describe("doctor command", () => {
     const { binDir } = setupFakeDoctorToolchain(root);
 
     const missingBoards = resolve(root, "boards-missing");
-    const result = runCli(
-      ["doctor", "--workspace", workspace, "--boards-path", missingBoards],
-      {
-        env: {
-          HOME: home,
-          XDG_CONFIG_HOME: xdgConfigHome,
-          PATH: `${binDir}:${process.env.PATH ?? ""}`,
-        },
-      }
-    );
+    const result = runCli(["doctor", "--workspace", workspace, "--boards-path", missingBoards], {
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain("boards repository not found");
-    expect(result.output).toContain("Interactive prompt skipped");
+    expect(result.output).toContain("Prompt skipped (non-interactive terminal). Defaulting to No.");
   });
 
   it("offers official install guidance when brew is unavailable", () => {
     const root = makeTempDir("tiresias-doctor-no-brew-");
     tempDirs.push(root);
     const workspace = resolve(root, "tiresias-workspace");
-    const boards = resolve(root, "tiresias-boards");
+    const boards = resolve(root, "boards");
     const home = resolve(root, "home");
     const xdgConfigHome = resolve(root, "xdg");
     const binDir = resolve(root, "bin");
@@ -262,19 +243,19 @@ describe("doctor command", () => {
       resolve(binDir, "west"),
       `#!/usr/bin/env bash
 echo "West version: v1.5.0"
-`
+`,
     );
     writeExecutable(
       resolve(binDir, "cmake"),
       `#!/usr/bin/env bash
 echo "cmake version 4.2.3"
-`
+`,
     );
     writeExecutable(
       resolve(binDir, "python3"),
       `#!/usr/bin/env bash
 echo "Python 3.14.3"
-`
+`,
     );
     writeExecutable(
       resolve(binDir, "nrfutil"),
@@ -292,29 +273,62 @@ if [[ "\${1:-}" == "toolchain-manager" && "\${2:-}" == "list" ]]; then
   exit 0
 fi
 exit 0
-`
+`,
     );
     writeExecutable(
       resolve(binDir, "nrfjprog"),
       `#!/usr/bin/env bash
 echo "nrfjprog version: 10.24.2 external"
-`
+`,
     );
 
-    const result = runCli(
-      ["doctor", "--workspace", workspace, "--boards-path", boards],
-      {
-        env: {
-          HOME: home,
-          XDG_CONFIG_HOME: xdgConfigHome,
-          PATH: binDir,
-        },
-      }
-    );
+    const result = runCli(["doctor", "--workspace", workspace, "--boards-path", boards], {
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: binDir,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain("segger-jlink not found");
     expect(result.output).toContain("Homebrew is not installed");
     expect(result.output).toContain("Official install guide");
+  });
+
+  it("supports structured json output", () => {
+    const root = makeTempDir("tiresias-doctor-json-output-");
+    tempDirs.push(root);
+    const workspace = resolve(root, "tiresias-workspace");
+    const boards = resolve(root, "boards");
+    const home = resolve(root, "home");
+    const xdgConfigHome = resolve(root, "xdg");
+
+    ensureDir(resolve(workspace, ".west"));
+    ensureDir(boards);
+    ensureDir(resolve(home, "Applications", "nRF Connect for Desktop.app"));
+    const { binDir } = setupFakeDoctorToolchain(root);
+
+    const result = runCli(["doctor", "--workspace", workspace, "--boards-path", boards, "--json"], {
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as {
+      command: string;
+      overallStatus: string;
+      paths: {
+        workspacePath: { value: string | null; source: string | null };
+        boardsPath: { value: string | null; source: string | null };
+      };
+    };
+    expect(parsed.command).toBe("doctor");
+    expect(parsed.overallStatus).toBe("ok");
+    expect(parsed.paths.workspacePath.source).toBe("flag");
+    expect(parsed.paths.boardsPath.source).toBe("flag");
   });
 });

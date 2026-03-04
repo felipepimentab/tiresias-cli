@@ -1,0 +1,15 @@
+Usage: tiresias [options] [command]
+
+Tiresias firmware development environment checker
+
+Options:
+  -V, --version     output the version number
+  -h, --help        display help for command
+
+Commands:
+  config            Manage persisted Tiresias CLI configuration
+  doctor [options]  Check development environment
+  init [options]    Initialize Tiresias west workspace and clone tiresias-boards
+                    as sibling repo
+  update [options]  Pull latest changes for tiresias-fw and boards
+  help [command]    display help for command

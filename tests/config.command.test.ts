@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { resolve } from "node:path";
-import { makeTempDir, readText, removeDir, runCli } from "./helpers";
+import { makeTempDir, readText, removeDir, runCli, writeJson } from "./helpers";
 
 const tempDirs: string[] = [];
 
@@ -32,7 +32,7 @@ describe("config command", () => {
     const boardsPath = "/tmp/boards-a";
     const setResult = runCli(
       ["config", "set", "--workspace", workspacePath, "--boards-path", boardsPath],
-      { env: { XDG_CONFIG_HOME: xdgConfigHome } }
+      { env: { XDG_CONFIG_HOME: xdgConfigHome } },
     );
     expect(setResult.exitCode).toBe(0);
     expect(setResult.output).toContain("Configuration saved.");
@@ -63,5 +63,19 @@ describe("config command", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("No values provided");
+  });
+
+  it("treats invalid config schema as empty state", () => {
+    const xdgConfigHome = makeTempDir("tiresias-config-invalid-schema-");
+    tempDirs.push(xdgConfigHome);
+    const configFile = resolve(xdgConfigHome, "tiresias-cli", "config.json");
+
+    writeJson(configFile, { workspacePath: 123, extraField: "unexpected" });
+    const result = runCli(["config", "show"], {
+      env: { XDG_CONFIG_HOME: xdgConfigHome },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toContain("No persisted paths configured yet.");
   });
 });

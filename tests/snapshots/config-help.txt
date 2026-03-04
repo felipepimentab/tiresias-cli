@@ -1,0 +1,11 @@
+Usage: tiresias config [options] [command]
+
+Manage persisted Tiresias CLI configuration
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  show            Show current persisted configuration
+  set [options]   Persist workspace and/or boards paths globally
+  help [command]  display help for command

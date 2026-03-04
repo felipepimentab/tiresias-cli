@@ -29,7 +29,7 @@ function setupFakeGit(baseDir: string) {
 set -euo pipefail
 echo "$PWD :: $*" >> "\${GIT_LOG:?}"
 exit 0
-`
+`,
   );
 
   return { binDir, gitLog };
@@ -81,16 +81,13 @@ describe("update command", () => {
     ensureDir(resolve(boards, ".git"));
 
     const { binDir, gitLog } = setupFakeGit(root);
-    const result = runCli(
-      ["update", "--workspace", workspace, "--boards-path", boards],
-      {
-        env: {
-          XDG_CONFIG_HOME: xdgConfigHome,
-          GIT_LOG: gitLog,
-          PATH: `${binDir}:${process.env.PATH ?? ""}`,
-        },
-      }
-    );
+    const result = runCli(["update", "--workspace", workspace, "--boards-path", boards], {
+      env: {
+        XDG_CONFIG_HOME: xdgConfigHome,
+        GIT_LOG: gitLog,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
     const calls = readText(gitLog);
@@ -121,6 +118,8 @@ describe("update command", () => {
     });
 
     expect(result.exitCode).toBe(0);
+    expect(result.output).toContain("workspace path:");
+    expect(result.output).toContain("source: persisted config");
     const calls = readText(gitLog);
     expect(calls).toContain(`${resolve(workspace, "tiresias-fw")} :: pull`);
     expect(calls).toContain(`${boards} :: pull`);

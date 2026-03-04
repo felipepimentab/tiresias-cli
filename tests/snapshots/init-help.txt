@@ -1,0 +1,17 @@
+Usage: tiresias init [options]
+
+Initialize Tiresias west workspace and clone tiresias-boards as sibling repo
+
+Options:
+  -p, --parent <path>          Parent directory for both repositories (default:
+                               ".")
+  -w, --workspace-name <name>  West workspace directory name (default:
+                               "tiresias-workspace")
+  -b, --boards-name <name>     Boards directory name (default: "boards")
+  --branch <name>              tiresias-fw manifest repository branch (default:
+                               "main")
+  -f, --force                  Overwrite existing workspace/boards directories
+                               if they exist (default: false)
+  --skip-west-update           Skip `west update` during initialization
+                               (default: false)
+  -h, --help                   display help for command

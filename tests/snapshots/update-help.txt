@@ -1,0 +1,8 @@
+Usage: tiresias update [options]
+
+Pull latest changes for tiresias-fw and boards
+
+Options:
+  -w, --workspace <path>    West workspace path
+  -B, --boards-path <path>  Path to boards repository (outside workspace)
+  -h, --help                display help for command

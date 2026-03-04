@@ -44,7 +44,7 @@ if [[ "$cmd" == "topdir" ]]; then
   exit 0
 fi
 exit 0
-`
+`,
   );
 
   writeExecutable(
@@ -58,21 +58,21 @@ if [[ "$cmd" == "clone" ]]; then
   mkdir -p "$PWD/$dest/.git"
 fi
 exit 0
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "cmake"),
     `#!/usr/bin/env bash
 echo "cmake version 4.2.3"
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "python3"),
     `#!/usr/bin/env bash
 echo "Python 3.14.3"
-`
+`,
   );
 
   writeExecutable(
@@ -98,21 +98,21 @@ if [[ "\${1:-}" == "install" && "\${2:-}" == "toolchain-manager" ]]; then
   exit 0
 fi
 echo "ok"
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "JLinkExe"),
     `#!/usr/bin/env bash
 echo "SEGGER J-Link Commander"
-`
+`,
   );
 
   writeExecutable(
     resolve(binDir, "nrfjprog"),
     `#!/usr/bin/env bash
 echo "nrfjprog version: 10.24.2 external"
-`
+`,
   );
 
   return { binDir, westLog, gitLog };
@@ -160,14 +160,7 @@ describe("init command", () => {
     ensureDir(resolve(home, "Applications", "nRF Connect for Desktop.app"));
 
     const result = runCli(
-      [
-        "init",
-        "--parent",
-        parent,
-        "--workspace-name",
-        "tiresias-workspace",
-        "--skip-west-update",
-      ],
+      ["init", "--parent", parent, "--workspace-name", "tiresias-workspace", "--skip-west-update"],
       {
         env: {
           HOME: home,
@@ -176,21 +169,24 @@ describe("init command", () => {
           GIT_LOG: resolve(root, "git.log"),
           PATH: `${binDir}:${process.env.PATH ?? ""}`,
         },
-      }
+      },
     );
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain("Skipping `west update` as requested.");
-    expect(result.output).toContain("In the NCS extension, add the application if it is not already added.");
+    expect(result.output).toContain(
+      "In the NCS extension, add the application if it is not already added.",
+    );
     expect(result.output).toContain("Build with board target: tiresias_dk/nrf5340/cpuapp");
 
     const westInvocations = readText(westLog);
     expect(westInvocations).toContain("init -m");
     expect(westInvocations).not.toContain(":: update");
 
-    const config = JSON.parse(
-      readText(resolve(xdgConfigHome, "tiresias-cli", "config.json"))
-    ) as { workspacePath: string; boardsPath: string };
+    const config = JSON.parse(readText(resolve(xdgConfigHome, "tiresias-cli", "config.json"))) as {
+      workspacePath: string;
+      boardsPath: string;
+    };
     expect(config.workspacePath).toBe(resolve(parent, "tiresias-workspace"));
     expect(config.boardsPath).toBe(resolve(parent, "boards"));
   });
@@ -235,7 +231,7 @@ if [[ "\${1:-}" == "clone" ]]; then
   mkdir -p "$PWD/$dest/.git"
 fi
 exit 0
-`
+`,
     );
     writeExecutable(
       resolve(binDir, "west"),
@@ -255,21 +251,18 @@ if [[ "$cmd" == "--version" ]]; then
   exit 0
 fi
 exit 0
-`
+`,
     );
 
-    const result = runCli(
-      ["init", "--parent", parent, "--skip-west-update"],
-      {
-        env: {
-          XDG_CONFIG_HOME: xdgConfigHome,
-          PATH: `${binDir}:/usr/bin:/bin`,
-        },
-      }
-    );
+    const result = runCli(["init", "--parent", parent, "--skip-west-update"], {
+      env: {
+        XDG_CONFIG_HOME: xdgConfigHome,
+        PATH: `${binDir}:/usr/bin:/bin`,
+      },
+    });
 
     expect(result.exitCode).toBe(0);
-    expect(result.output).toContain("Interactive prompt skipped");
+    expect(result.output).toContain("Prompt skipped (non-interactive terminal). Defaulting to No.");
     expect(result.output).toContain("nrfutil not found");
   });
 });
