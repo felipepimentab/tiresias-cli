@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   ensureDir,
@@ -97,6 +98,12 @@ exit 0
   return { binDir, brewLog };
 }
 
+function ensureEditorSettingsDirs(home: string) {
+  ensureDir(resolve(home, "Library", "Application Support", "Code", "User"));
+  ensureDir(resolve(home, ".config", "Code", "User"));
+  ensureDir(resolve(home, "AppData", "Roaming", "Code", "User"));
+}
+
 describe("doctor command", () => {
   it("passes with a complete mocked toolchain and valid paths", () => {
     const root = makeTempDir("tiresias-doctor-success-");
@@ -127,6 +134,87 @@ describe("doctor command", () => {
     expect(result.output).toContain("west workspace found");
     expect(result.output).toContain("boards repository found");
     expect(result.output).toContain("Done.");
+  });
+
+  it("prints manual board root tutorial when settings update prompt is declined/skipped", () => {
+    const root = makeTempDir("tiresias-doctor-editor-settings-");
+    tempDirs.push(root);
+    const workspace = resolve(root, "tiresias-workspace");
+    const boards = resolve(root, "boards");
+    const home = resolve(root, "home");
+    const xdgConfigHome = resolve(root, "xdg");
+
+    ensureDir(resolve(workspace, ".west"));
+    ensureDir(boards);
+    ensureDir(resolve(home, "Applications", "nRF Connect for Desktop.app"));
+    ensureEditorSettingsDirs(home);
+    const { binDir } = setupFakeDoctorToolchain(root);
+
+    const result = runCli(
+      ["doctor", "--workspace", workspace, "--boards-path", boards],
+      {
+        env: {
+          HOME: home,
+          XDG_CONFIG_HOME: xdgConfigHome,
+          PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        },
+      }
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toContain("Interactive prompt skipped");
+    expect(result.output).toContain(
+      "https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629"
+    );
+  });
+
+  it("parses JSON5-like editor settings without parse errors", () => {
+    const root = makeTempDir("tiresias-doctor-json5-settings-");
+    tempDirs.push(root);
+    const workspace = resolve(root, "tiresias-workspace");
+    const boards = resolve(root, "boards");
+    const home = resolve(root, "home");
+    const xdgConfigHome = resolve(root, "xdg");
+    const vscodeSettings = resolve(
+      home,
+      "Library",
+      "Application Support",
+      "Code",
+      "User",
+      "settings.json"
+    );
+
+    ensureDir(resolve(workspace, ".west"));
+    ensureDir(boards);
+    ensureDir(resolve(home, "Applications", "nRF Connect for Desktop.app"));
+    ensureEditorSettingsDirs(home);
+    writeFileSync(
+      vscodeSettings,
+      `{
+  // JSONC/JSON5 style content
+  editor: {
+    formatOnSave: true,
+  },
+}
+`,
+      "utf8"
+    );
+    const { binDir } = setupFakeDoctorToolchain(root);
+
+    const result = runCli(
+      ["doctor", "--workspace", workspace, "--boards-path", boards],
+      {
+        env: {
+          HOME: home,
+          XDG_CONFIG_HOME: xdgConfigHome,
+          PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        },
+      }
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.output).not.toContain("Failed to parse settings file");
+    expect(result.output).toContain("VS Code settings detected");
   });
 
   it("warns and skips prompts in non-interactive mode when boards are missing", () => {

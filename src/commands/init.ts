@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 import { readConfig, updateConfig } from "../lib/config";
+import { configureEditorBoardRoots } from "../lib/editor-settings";
 import { runCommand } from "../lib/exec";
 import { error, info, success, warn } from "../lib/logger";
 
@@ -152,12 +153,16 @@ export function registerInit(program: Command) {
         });
 
         await updateConfig({ workspacePath, boardsPath });
+        await configureEditorBoardRoots({
+          boardsPath,
+          askYesNo,
+          logger: { info, success, warn, error },
+        });
 
         success("Initialization complete.");
         info(`Workspace: ${workspacePath}`);
         info(`Boards: ${boardsPath}`);
         info("Persisted workspace and boards paths in CLI config.");
-        info("Next: open nRF Connect for VS Code and add the boards path as an extra board root.");
       } catch (err) {
         error(String(err));
         process.exit(1);

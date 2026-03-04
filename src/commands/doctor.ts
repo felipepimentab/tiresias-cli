@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 import { readConfig, type TiresiasConfig, updateConfig } from "../lib/config";
+import { configureEditorBoardRoots } from "../lib/editor-settings";
 import { runCommand } from "../lib/exec";
 import { error, info, success, warn } from "../lib/logger";
 
@@ -90,6 +91,11 @@ export function registerDoctor(program: Command) {
       const boardsPath = await checkBoardsPath(options.boardsPath, workspacePath, config);
       if (boardsPath) {
         await updateConfig({ boardsPath });
+        await configureEditorBoardRoots({
+          boardsPath,
+          askYesNo,
+          logger: { info, success, warn, error },
+        });
       }
 
       info("Done.");
@@ -323,9 +329,6 @@ async function checkBoardsPath(
   }
 
   success(`boards repository found (${boardsPath})`);
-  info(
-    "Reminder: add this path in the nRF Connect for VS Code extension UI as an extra board root."
-  );
   return boardsPath;
 }
 
@@ -349,9 +352,6 @@ async function cloneBoardsRepository(boardsPath: string) {
     info(`Cloning tiresias-boards into ${boardsPath}...`);
     await runCommand("git", ["clone", BOARDS_REPO_URL, boardsPath], { quiet: false });
     success("tiresias-boards cloned successfully.");
-    info(
-      "Reminder: add this path in the nRF Connect for VS Code extension UI as an extra board root."
-    );
     return true;
   } catch (err) {
     error(String(err));

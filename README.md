@@ -20,71 +20,6 @@ brew install felipepimentab/tiresias/tiresias-cli
 
 Alternatively, pre-compiled binaries for Mac, Windows and Linux are available on the releases page.
 
-
-## Runing Locally (Development)
-
-Use this mode for local development/testing from this repository.
-
-Prerequisites:
-- [Bun](https://bun.com) installed
-- macOS or Linux shell (`zsh`/`bash`)
-
-Clone the repository and, from its root, run:
-
-```bash
-bun install
-```
-
-> [!TIP]
-> This does not add `tiresias` globally to your PATH and avoids conflicts with the Homebrew-installed production binary.
-
-## Build Binaries
-
-Build all standalone executables:
-
-```bash
-bun run build:binaries
-```
-
-Generated artifacts:
-- `dist/tiresias-macos`
-- `dist/tiresias-linux`
-- `dist/tiresias-win.exe`
-
-## Versioning and Releases
-
-This project aligns:
-- `package.json` version
-- git tag (`vX.Y.Z`)
-- GitHub release (`vX.Y.Z`)
-
-Version bump only (updates `package.json`):
-
-```bash
-bun run version:patch
-bun run version:minor
-bun run version:major
-```
-
-Full release automation (recommended):
-
-```bash
-bun run release:patch
-bun run release:minor
-bun run release:major
-```
-
-`release:*` does all steps automatically:
-1. Verifies clean git working tree on `main`
-2. Increments `package.json` version
-3. Commits and tags (`vX.Y.Z`)
-4. Builds all 3 binaries
-5. Pushes `main` and tag to `origin`
-6. Creates GitHub release and uploads binaries
-
-Prerequisite for release publishing:
-- GitHub CLI installed and authenticated (`gh auth login`)
-
 ## Commands
 
 - `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones `tiresias-boards` into a sibling `boards` directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
@@ -115,6 +50,8 @@ Behavior:
 - optionally runs `west update`.
 - clones `tiresias-boards`.
 - persists `workspacePath` and `boardsPath` in config.
+- auto-detects VS Code/Trae user settings files and asks `[Y/n]` before writing `nrf-connect.boardRoots`.
+- if skipped/manual setup is chosen, prints the YouTube tutorial link.
 
 ### `tiresias config`
 
@@ -143,6 +80,8 @@ Prompts:
 - offers Homebrew installation for missing tools on macOS.
 - shows official installation links on non-macOS.
 - offers automatic clone for missing `tiresias-boards`.
+- auto-detects VS Code/Trae settings and asks `[Y/n]` before writing `nrf-connect.boardRoots`.
+- prints the manual setup tutorial link if you choose not to auto-write settings.
 
 ### `tiresias update`
 
@@ -197,9 +136,14 @@ Optional `init` flags:
 - stops by default when conflicts are found.
 - with `--force`, continues and overwrites target workspace/boards directories.
 
-2. Add the boards path in the **nRF Connect for VS Code** extension UI as an extra board root.
+2. Let the CLI auto-configure editor settings when prompted.
+It auto-detects VS Code and Trae user settings and asks `[Y/n]` before writing:
+- file: detected `settings.json`
+- key: `nrf-connect.boardRoots`
+- value: includes your `boards` path
 
-Reference tutorial: [How to add board roots in NCS extension](https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629)
+If you choose manual setup, use this tutorial:
+[How to add board roots in NCS extension](https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629)
 
 3. Run doctor with explicit paths:
 
@@ -274,3 +218,67 @@ Test suite overview:
 ```bash
 tiresias doctor
 ```
+
+## Running Locally (Development)
+
+Use this mode for local development/testing from this repository.
+
+Prerequisites:
+- [Bun](https://bun.com) installed
+- macOS or Linux shell (`zsh`/`bash`)
+
+Clone the repository and, from its root, run:
+
+```bash
+bun install
+```
+
+> [!TIP]
+> This does not add `tiresias` globally to your PATH and avoids conflicts with the Homebrew-installed production binary.
+
+## Build Binaries
+
+Build all standalone executables:
+
+```bash
+bun run build:binaries
+```
+
+Generated artifacts:
+- `dist/tiresias-macos`
+- `dist/tiresias-linux`
+- `dist/tiresias-win.exe`
+
+## Versioning and Releases
+
+This project aligns:
+- `package.json` version
+- git tag (`vX.Y.Z`)
+- GitHub release (`vX.Y.Z`)
+
+Version bump only (updates `package.json`):
+
+```bash
+bun run version:patch
+bun run version:minor
+bun run version:major
+```
+
+Full release automation (recommended):
+
+```bash
+bun run release:patch
+bun run release:minor
+bun run release:major
+```
+
+`release:*` does all steps automatically:
+1. Verifies clean git working tree on `main`
+2. Increments `package.json` version
+3. Commits and tags (`vX.Y.Z`)
+4. Builds all 3 binaries
+5. Pushes `main` and tag to `origin`
+6. Creates GitHub release and uploads binaries
+
+Prerequisite for release publishing:
+- GitHub CLI installed and authenticated (`gh auth login`)
