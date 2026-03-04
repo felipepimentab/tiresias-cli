@@ -52,6 +52,7 @@ Behavior:
 - persists `workspacePath` and `boardsPath` in config.
 - auto-detects VS Code/Trae user settings files and asks `[Y/n]` before writing `nrf-connect.boardRoots`.
 - if skipped/manual setup is chosen, prints the YouTube tutorial link.
+- after successful init, prints NCS next steps (add app and build target `tiresias_dk/nrf5340/cpuapp`) and asks `[Y/n]` to open the workspace in the detected editor.
 
 ### `tiresias config`
 

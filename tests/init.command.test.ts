@@ -181,6 +181,8 @@ describe("init command", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain("Skipping `west update` as requested.");
+    expect(result.output).toContain("In the NCS extension, add the application if it is not already added.");
+    expect(result.output).toContain("Build with board target: tiresias_dk/nrf5340/cpuapp");
 
     const westInvocations = readText(westLog);
     expect(westInvocations).toContain("init -m");

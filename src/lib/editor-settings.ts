@@ -13,6 +13,11 @@ type EditorSettingsTarget = {
   settingsPath: string;
 };
 
+type EditorCommand = {
+  editor: EditorKind;
+  command: string;
+};
+
 type Logger = {
   info: (message: string) => void;
   success: (message: string) => void;
@@ -41,6 +46,42 @@ export async function configureEditorBoardRoots(options: ConfigureBoardRootsOpti
   for (const target of targets) {
     await configureSingleTarget(target, boardsPath, options);
   }
+}
+
+export function detectPreferredEditorCommand() {
+  const termProgram = (process.env.TERM_PROGRAM ?? "").toLowerCase();
+  const candidates: EditorCommand[] = [];
+
+  if (Bun.which("code")) {
+    candidates.push({ editor: "VS Code", command: "code" });
+  }
+  if (Bun.which("trae")) {
+    candidates.push({ editor: "Trae", command: "trae" });
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (termProgram.includes("vscode")) {
+    return candidates.find((candidate) => candidate.editor === "VS Code") ?? candidates[0]!;
+  }
+  if (termProgram.includes("trae")) {
+    return candidates.find((candidate) => candidate.editor === "Trae") ?? candidates[0]!;
+  }
+
+  const settingsTargets = detectEditorSettingsTargets();
+  const withExistingSettings = candidates.find((candidate) =>
+    settingsTargets.some((target) => target.editor === candidate.editor && existsSync(target.settingsPath))
+  );
+  if (withExistingSettings) {
+    return withExistingSettings;
+  }
+
+  const withDetectedUserDir = candidates.find((candidate) =>
+    settingsTargets.some((target) => target.editor === candidate.editor)
+  );
+  return withDetectedUserDir ?? candidates[0]!;
 }
 
 function detectEditorSettingsTargets() {

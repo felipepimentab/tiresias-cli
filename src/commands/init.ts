@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 import { readConfig, updateConfig } from "../lib/config";
-import { configureEditorBoardRoots } from "../lib/editor-settings";
+import { configureEditorBoardRoots, detectPreferredEditorCommand } from "../lib/editor-settings";
 import { runCommand } from "../lib/exec";
 import { error, info, success, warn } from "../lib/logger";
 
@@ -163,6 +163,11 @@ export function registerInit(program: Command) {
         info(`Workspace: ${workspacePath}`);
         info(`Boards: ${boardsPath}`);
         info("Persisted workspace and boards paths in CLI config.");
+        info("Next steps:");
+        info(`1. Open your workspace in your editor: ${workspacePath}`);
+        info("2. In the NCS extension, add the application if it is not already added.");
+        info("3. Build with board target: tiresias_dk/nrf5340/cpuapp");
+        await promptToOpenWorkspaceInEditor(workspacePath);
       } catch (err) {
         error(String(err));
         process.exit(1);
@@ -444,6 +449,32 @@ async function askYesNo(question: string) {
     return answer === "" || answer === "y" || answer === "yes";
   } finally {
     rl.close();
+  }
+}
+
+async function promptToOpenWorkspaceInEditor(workspacePath: string) {
+  const detectedEditor = detectPreferredEditorCommand();
+  const destination = `${detectedEditor?.editor ?? "detected editor"} (${workspacePath})`;
+  const shouldOpen = await askYesNo(
+    `Do you want to open ${destination} now? [Y/n] `
+  );
+  if (!shouldOpen) {
+    return;
+  }
+
+  if (!detectedEditor) {
+    warn("Could not auto-detect VS Code or Trae CLI command.");
+    warn(`Open this folder manually in your editor: ${workspacePath}`);
+    return;
+  }
+
+  try {
+    info(`Opening ${detectedEditor.editor} at ${workspacePath}...`);
+    await runCommand(detectedEditor.command, [workspacePath], { quiet: false });
+    success(`${detectedEditor.editor} opened.`);
+  } catch (err) {
+    error(`Failed to open ${detectedEditor.editor}: ${String(err)}`);
+    warn(`Open this folder manually in your editor: ${workspacePath}`);
   }
 }
 
