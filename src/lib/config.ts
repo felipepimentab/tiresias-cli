@@ -2,11 +2,17 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { z } from "zod";
+import { CONFIG_DIRECTORY_NAME, CONFIG_FILE_NAME } from "./constants";
 
-export type TiresiasConfig = {
-  workspacePath?: string;
-  boardsPath?: string;
-};
+const tiresiasConfigSchema = z
+  .object({
+    workspacePath: z.string().min(1).optional(),
+    boardsPath: z.string().min(1).optional(),
+  })
+  .strict();
+
+export type TiresiasConfig = z.infer<typeof tiresiasConfigSchema>;
 
 function getConfigDirectory() {
   if (process.env.XDG_CONFIG_HOME) {
@@ -16,7 +22,15 @@ function getConfigDirectory() {
 }
 
 export function getConfigFilePath() {
-  return resolve(getConfigDirectory(), "tiresias-cli", "config.json");
+  return resolve(getConfigDirectory(), CONFIG_DIRECTORY_NAME, CONFIG_FILE_NAME);
+}
+
+function parseConfig(content: unknown): TiresiasConfig {
+  const parsed = tiresiasConfigSchema.safeParse(content);
+  if (!parsed.success) {
+    return {};
+  }
+  return parsed.data;
 }
 
 export async function readConfig(): Promise<TiresiasConfig> {
@@ -26,14 +40,18 @@ export async function readConfig(): Promise<TiresiasConfig> {
   }
 
   const raw = await readFile(configPath, "utf8");
-  const parsed = JSON.parse(raw) as TiresiasConfig;
-  return parsed;
+  try {
+    return parseConfig(JSON.parse(raw) as unknown);
+  } catch {
+    return {};
+  }
 }
 
 export async function writeConfig(config: TiresiasConfig) {
   const configPath = getConfigFilePath();
   await mkdir(dirname(configPath), { recursive: true });
-  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  const parsedConfig = parseConfig(config);
+  await writeFile(configPath, `${JSON.stringify(parsedConfig, null, 2)}\n`, "utf8");
 }
 
 export async function updateConfig(patch: Partial<TiresiasConfig>) {

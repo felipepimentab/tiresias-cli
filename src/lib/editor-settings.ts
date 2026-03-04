@@ -1,10 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, posix, resolve, win32 } from "node:path";
 import JSON5 from "json5";
-
-export const BOARD_ROOTS_TUTORIAL_URL =
-  "https://youtu.be/V_dVKgWKILM?si=UypFkBgh_aVOVuQG&t=2629";
+import { BOARD_ROOTS_TUTORIAL_URL } from "./constants";
 
 type EditorKind = "VS Code" | "Trae";
 
@@ -38,7 +36,9 @@ export async function configureEditorBoardRoots(options: ConfigureBoardRootsOpti
   const targets = detectEditorSettingsTargets();
 
   if (targets.length === 0) {
-    options.logger.warn("Could not detect VS Code or Trae settings for automatic board root setup.");
+    options.logger.warn(
+      "Could not detect VS Code or Trae settings for automatic board root setup.",
+    );
     options.logger.info(`Manual tutorial: ${BOARD_ROOTS_TUTORIAL_URL}`);
     return;
   }
@@ -62,60 +62,86 @@ export function detectPreferredEditorCommand() {
   if (candidates.length === 0) {
     return null;
   }
+  const firstCandidate = candidates[0];
+  if (!firstCandidate) {
+    return null;
+  }
 
   if (termProgram.includes("vscode")) {
-    return candidates.find((candidate) => candidate.editor === "VS Code") ?? candidates[0]!;
+    return candidates.find((candidate) => candidate.editor === "VS Code") ?? firstCandidate;
   }
   if (termProgram.includes("trae")) {
-    return candidates.find((candidate) => candidate.editor === "Trae") ?? candidates[0]!;
+    return candidates.find((candidate) => candidate.editor === "Trae") ?? firstCandidate;
   }
 
   const settingsTargets = detectEditorSettingsTargets();
   const withExistingSettings = candidates.find((candidate) =>
-    settingsTargets.some((target) => target.editor === candidate.editor && existsSync(target.settingsPath))
+    settingsTargets.some(
+      (target) => target.editor === candidate.editor && existsSync(target.settingsPath),
+    ),
   );
   if (withExistingSettings) {
     return withExistingSettings;
   }
 
   const withDetectedUserDir = candidates.find((candidate) =>
-    settingsTargets.some((target) => target.editor === candidate.editor)
+    settingsTargets.some((target) => target.editor === candidate.editor),
   );
-  return withDetectedUserDir ?? candidates[0]!;
+  return withDetectedUserDir ?? firstCandidate;
 }
 
 function detectEditorSettingsTargets() {
   const home = process.env.HOME ?? "";
   const appData = process.env.APPDATA ?? "";
 
-  const definitions = getSettingsPathDefinitions(home, appData);
+  const definitions = getSettingsPathDefinitionsForPlatform(process.platform, home, appData);
   return definitions.filter((target) => existsSync(dirname(target.settingsPath)));
 }
 
-function getSettingsPathDefinitions(home: string, appData: string): EditorSettingsTarget[] {
-  if (process.platform === "darwin") {
+export function getSettingsPathDefinitionsForPlatform(
+  platform: NodeJS.Platform,
+  home: string,
+  appData: string,
+): EditorSettingsTarget[] {
+  const pathResolver = platform === "win32" ? win32.resolve : posix.resolve;
+
+  if (platform === "darwin") {
     return [
       {
         editor: "VS Code",
-        settingsPath: resolve(home, "Library", "Application Support", "Code", "User", "settings.json"),
+        settingsPath: pathResolver(
+          home,
+          "Library",
+          "Application Support",
+          "Code",
+          "User",
+          "settings.json",
+        ),
       },
       {
         editor: "Trae",
-        settingsPath: resolve(home, "Library", "Application Support", "Trae", "User", "settings.json"),
+        settingsPath: pathResolver(
+          home,
+          "Library",
+          "Application Support",
+          "Trae",
+          "User",
+          "settings.json",
+        ),
       },
     ];
   }
 
-  if (process.platform === "win32") {
-    const base = appData || resolve(home, "AppData", "Roaming");
+  if (platform === "win32") {
+    const base = appData || pathResolver(home, "AppData", "Roaming");
     return [
       {
         editor: "VS Code",
-        settingsPath: resolve(base, "Code", "User", "settings.json"),
+        settingsPath: pathResolver(base, "Code", "User", "settings.json"),
       },
       {
         editor: "Trae",
-        settingsPath: resolve(base, "Trae", "User", "settings.json"),
+        settingsPath: pathResolver(base, "Trae", "User", "settings.json"),
       },
     ];
   }
@@ -123,11 +149,11 @@ function getSettingsPathDefinitions(home: string, appData: string): EditorSettin
   return [
     {
       editor: "VS Code",
-      settingsPath: resolve(home, ".config", "Code", "User", "settings.json"),
+      settingsPath: pathResolver(home, ".config", "Code", "User", "settings.json"),
     },
     {
       editor: "Trae",
-      settingsPath: resolve(home, ".config", "Trae", "User", "settings.json"),
+      settingsPath: pathResolver(home, ".config", "Trae", "User", "settings.json"),
     },
   ];
 }
@@ -135,7 +161,7 @@ function getSettingsPathDefinitions(home: string, appData: string): EditorSettin
 async function configureSingleTarget(
   target: EditorSettingsTarget,
   boardsPath: string,
-  options: ConfigureBoardRootsOptions
+  options: ConfigureBoardRootsOptions,
 ) {
   const settings = await loadSettings(target.settingsPath, options.logger);
   if (!settings) {
@@ -146,7 +172,7 @@ async function configureSingleTarget(
   const currentBoardRoots = settings[BOARD_ROOTS_KEY];
   if (currentBoardRoots !== undefined && !Array.isArray(currentBoardRoots)) {
     options.logger.error(
-      `Cannot update ${target.editor} settings because "${BOARD_ROOTS_KEY}" is not an array (${target.settingsPath}).`
+      `Cannot update ${target.editor} settings because "${BOARD_ROOTS_KEY}" is not an array (${target.settingsPath}).`,
     );
     options.logger.info(`Manual tutorial: ${BOARD_ROOTS_TUTORIAL_URL}`);
     return;
@@ -155,7 +181,7 @@ async function configureSingleTarget(
   const boardRoots = (currentBoardRoots as string[] | undefined) ?? [];
   if (boardRoots.includes(boardsPath)) {
     options.logger.success(
-      `${target.editor} already contains "${BOARD_ROOTS_KEY}" entry for ${boardsPath}.`
+      `${target.editor} already contains "${BOARD_ROOTS_KEY}" entry for ${boardsPath}.`,
     );
     return;
   }
@@ -165,11 +191,11 @@ async function configureSingleTarget(
   options.logger.info(`Will write key "${BOARD_ROOTS_KEY}" with value:`);
   options.logger.info(`  ${JSON.stringify(nextBoardRoots)}`);
   options.logger.info(
-    "Reason: the nRF Connect extension reads this key to find external board directories."
+    "Reason: the nRF Connect extension reads this key to find external board directories.",
   );
 
   const shouldWrite = await options.askYesNo(
-    `Do you want to update ${target.editor} settings automatically? [Y/n] `
+    `Do you want to update ${target.editor} settings automatically? [Y/n] `,
   );
   if (!shouldWrite) {
     options.logger.warn(`Skipped automatic update for ${target.editor}.`);
@@ -183,7 +209,7 @@ async function configureSingleTarget(
     await mkdir(dirname(target.settingsPath), { recursive: true });
     await writeFile(target.settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
     options.logger.success(
-      `${target.editor} settings updated at ${target.settingsPath} (added ${boardsPath}).`
+      `${target.editor} settings updated at ${target.settingsPath} (added ${boardsPath}).`,
     );
   } catch (err) {
     options.logger.error(`Failed to write ${target.editor} settings: ${String(err)}`);
