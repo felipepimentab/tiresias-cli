@@ -1,0 +1,67 @@
+{
+  "command": "doctor",
+  "generatedAt": "<timestamp>",
+  "checks": [
+    {
+      "id": "west",
+      "status": "ok",
+      "message": "west found (West version: v1.5.0)"
+    },
+    {
+      "id": "cmake",
+      "status": "ok",
+      "message": "cmake found (cmake version 4.2.3)"
+    },
+    {
+      "id": "python3",
+      "status": "ok",
+      "message": "python3 found (Python 3.14.3)"
+    },
+    {
+      "id": "nrfutil",
+      "status": "ok",
+      "message": "nrfutil found (nrfutil 8.1.1)"
+    },
+    {
+      "id": "segger-jlink",
+      "status": "ok",
+      "message": "segger-jlink found (<path>)"
+    },
+    {
+      "id": "nordic-nrf-command-line-tools",
+      "status": "ok",
+      "message": "nordic-nrf-command-line-tools found (nrfjprog version: 10.24.2 external)"
+    },
+    {
+      "id": "nrf-connect-desktop",
+      "status": "ok",
+      "message": "nrf-connect-for-desktop found (<path>)"
+    },
+    {
+      "id": "ncs-toolchain",
+      "status": "ok",
+      "message": "nRF Connect SDK toolchain v3.0.1 found"
+    },
+    {
+      "id": "workspace",
+      "status": "ok",
+      "message": "west workspace found (<workspace>)"
+    },
+    {
+      "id": "boards",
+      "status": "ok",
+      "message": "boards repository found (<boards>)"
+    }
+  ],
+  "paths": {
+    "workspacePath": {
+      "path": "<workspace>",
+      "source": "flag"
+    },
+    "boardsPath": {
+      "path": "<boards>",
+      "source": "flag"
+    }
+  },
+  "overallStatus": "ok"
+}

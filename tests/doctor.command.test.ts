@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ensureDir, makeTempDir, removeDir, runCli, writeExecutable } from "./helpers";
 
@@ -95,6 +95,52 @@ function ensureEditorSettingsDirs(home: string) {
   ensureDir(resolve(home, "Library", "Application Support", "Code", "User"));
   ensureDir(resolve(home, ".config", "Code", "User"));
   ensureDir(resolve(home, "AppData", "Roaming", "Code", "User"));
+}
+
+function readFixture(name: string) {
+  return readFileSync(resolve(import.meta.dir, "fixtures", name), "utf8");
+}
+
+function normalizeDoctorReport(
+  report: {
+    generatedAt: string;
+    checks: Array<{ id: string; status: string; message: string }>;
+    paths: {
+      workspacePath: { path: string | null; source: string | null };
+      boardsPath: { path: string | null; source: string | null };
+    };
+  },
+  workspacePath: string,
+  boardsPath: string,
+) {
+  const normalizeMessage = (message: string) =>
+    message
+      .replaceAll(workspacePath, "<workspace>")
+      .replaceAll(boardsPath, "<boards>")
+      .replace(/\(\/[^)]+\)/g, "(<path>)");
+
+  return {
+    ...report,
+    generatedAt: "<timestamp>",
+    checks: report.checks.map((check) => ({
+      ...check,
+      message: normalizeMessage(check.message),
+    })),
+    paths: {
+      workspacePath: {
+        ...report.paths.workspacePath,
+        path:
+          report.paths.workspacePath.path === workspacePath
+            ? "<workspace>"
+            : report.paths.workspacePath.path,
+      },
+      boardsPath: {
+        ...report.paths.boardsPath,
+        path:
+          report.paths.boardsPath.path === boardsPath ? "<boards>" : report.paths.boardsPath.path,
+      },
+    },
+  };
 }
 
 describe("doctor command", () => {
@@ -320,15 +366,16 @@ echo "nrfjprog version: 10.24.2 external"
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as {
       command: string;
-      overallStatus: string;
+      generatedAt: string;
+      checks: Array<{ id: string; status: string; message: string }>;
       paths: {
-        workspacePath: { value: string | null; source: string | null };
-        boardsPath: { value: string | null; source: string | null };
+        workspacePath: { path: string | null; source: string | null };
+        boardsPath: { path: string | null; source: string | null };
       };
+      overallStatus: string;
     };
-    expect(parsed.command).toBe("doctor");
-    expect(parsed.overallStatus).toBe("ok");
-    expect(parsed.paths.workspacePath.source).toBe("flag");
-    expect(parsed.paths.boardsPath.source).toBe("flag");
+    const normalized = normalizeDoctorReport(parsed, workspace, boards);
+    const expected = JSON.parse(readFixture("doctor-json.golden.json")) as typeof normalized;
+    expect(normalized).toEqual(expected);
   });
 });
