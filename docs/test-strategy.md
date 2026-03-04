@@ -13,6 +13,7 @@
 - `tests/path-resolution.lib.test.ts`
 - `tests/editor-settings.lib.test.ts`
 - `tests/help.snapshot.test.ts`
+- `tests/fixtures/doctor-json.golden.json`
 
 Command tests mirror `src/commands/*.ts`.
 
@@ -48,6 +49,9 @@ Tests should assert this message and resulting control flow.
 ## Snapshot Coverage
 `tests/help.snapshot.test.ts` compares CLI help output to fixture snapshots in `tests/snapshots/`.
 Update snapshots intentionally when command surface changes.
+
+`doctor --json` is validated against `tests/fixtures/doctor-json.golden.json` after
+normalizing timestamp/path fields that vary per environment.
 
 ## Table-driven Tests
 Use table-driven tests for:

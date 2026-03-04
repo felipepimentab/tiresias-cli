@@ -27,6 +27,10 @@ Alternatively, pre-compiled binaries for Mac, Windows and Linux are available on
 - `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing). Supports `--json` for machine-readable output.
 - `update`: runs `git pull` in `<workspace>/tiresias-fw` and `boards`
 
+Global options:
+- `--verbose`: show debug execution logs (including subprocess invocation details).
+- `--quiet`: suppress non-essential logs (`info`/`success`) and show warnings/errors only.
+
 ## Command Reference
 
 ### `tiresias init`
@@ -320,3 +324,4 @@ Prerequisite for release publishing:
 - [Testing strategy](docs/test-strategy.md)
 - [Release playbook](docs/release-playbook.md)
 - [Contributing guide](CONTRIBUTING.md)
+- [Usage examples](examples/README.md)

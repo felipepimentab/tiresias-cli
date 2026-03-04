@@ -23,6 +23,22 @@ bun run test
 ```
 5. Commit with a clear conventional message.
 
+## Commit Granularity Policy
+Prefer one concern per commit so review and revert are safe.
+
+Good examples:
+- `feat(doctor): add --json report output`
+- `test(doctor): add golden fixture for --json`
+- `docs(cli): document path precedence`
+
+Anti-patterns:
+- mixing unrelated refactors + features + docs in one commit
+- committing generated artifacts with behavior changes unless required
+- renaming/moving files and changing logic in the same commit without clear reason
+
+Rule of thumb:
+- if a reviewer cannot summarize the commit in one sentence, split it.
+
 ## How To Add a Command
 1. Create `src/commands/<name>.ts`.
 2. Register it in `src/index.ts`.
@@ -40,6 +56,19 @@ bun run test
 - Avoid external network/tool dependencies in tests.
 - Validate both success and failure modes.
 - Validate non-interactive prompt behavior.
+
+## Optional Pre-commit Hooks
+To run `lint` and `typecheck` before each local commit:
+
+```bash
+bun run hooks:install
+```
+
+To disable:
+
+```bash
+bun run hooks:uninstall
+```
 
 ## Release
 See `docs/release-playbook.md`.

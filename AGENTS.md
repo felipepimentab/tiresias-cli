@@ -13,6 +13,7 @@ Main goals:
 Source layout:
 - `src/index.ts`: CLI entrypoint, command registration.
 - `src/commands/*.ts`: user-facing command implementations.
+- `src/checks/*.ts`: extracted check flows (tool checks, workspace checks, editor integration).
 - `src/lib/constants.ts`: centralized URLs, names, environment variable names, defaults.
 - `src/lib/config.ts`: config file read/write with Zod schema validation.
 - `src/lib/path-resolution.ts`: workspace/boards precedence resolution and source reporting.

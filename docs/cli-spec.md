@@ -19,6 +19,11 @@ Boards:
 - config: `boardsPath`
 - default: sibling `boards` directory next to workspace
 
+## Global CLI Options
+- `--verbose`: enables debug logs (for example, explicit subprocess command lines).
+- `--quiet`: suppresses `info`/`success` output while keeping warnings and errors.
+- If both are provided, `--quiet` takes precedence.
+
 ## `tiresias init`
 Purpose:
 - bootstrap local dependencies
@@ -33,6 +38,7 @@ Inputs:
 - `--branch <name>` default `main`
 - `--force`
 - `--skip-west-update`
+- plus global `--verbose` / `--quiet`
 
 Side effects:
 - may install dependencies (prompts first)
@@ -58,6 +64,23 @@ Exit codes:
 - `0` success
 - `1` failures (missing required tool, conflict without `--force`, command failure)
 
+Flow:
+
+```mermaid
+flowchart TD
+  A["Parse init options"] --> B["Run preflight safeguards"]
+  B --> C["Check/install required dependencies"]
+  C --> D["west init tiresias-fw workspace"]
+  D --> E{"--skip-west-update?"}
+  E -- "No" --> F["west update"]
+  E -- "Yes" --> G["Print reminder to run west update"]
+  F --> H["Clone tiresias-boards repo as local boards directory"]
+  G --> H
+  H --> I["Persist workspacePath + boardsPath config"]
+  I --> J["Offer editor boardRoots update prompt"]
+  J --> K["Print NCS next steps and optional open-editor prompt"]
+```
+
 ## `tiresias doctor`
 Purpose:
 - validate host tools, NCS toolchain, workspace, and boards layout
@@ -66,6 +89,7 @@ Inputs:
 - `--workspace <path>`
 - `--boards-path <path>`
 - `--json` (structured output mode, no interactive actions)
+- plus global `--verbose` / `--quiet`
 
 Side effects:
 - may install missing tools on macOS (prompt first, unless `--json`)
@@ -87,6 +111,26 @@ Exit codes:
 - `0` command completed (even if warnings/errors are reported in checks)
 - `1` fatal runtime errors (unexpected exceptions/process failures)
 
+Flow:
+
+```mermaid
+flowchart TD
+  A["Parse doctor options"] --> B{"--json?"}
+  B -- "Yes" --> C["Disable interactive actions"]
+  B -- "No" --> D["Enable prompts"]
+  C --> E["Run host tool checks"]
+  D --> E
+  E --> F["Check nRF Connect desktop + toolchain"]
+  F --> G["Resolve workspace and boards paths with precedence"]
+  G --> H["Validate workspace and boards layout"]
+  H --> I["Persist valid resolved paths"]
+  I --> J{"json mode?"}
+  J -- "No" --> K["Offer editor boardRoots update prompt"]
+  J -- "Yes" --> L["Emit structured JSON report"]
+  K --> M["Done"]
+  L --> M
+```
+
 ## `tiresias update`
 Purpose:
 - run `git pull` in both repositories
@@ -94,6 +138,7 @@ Purpose:
 Inputs:
 - `--workspace <path>`
 - `--boards-path <path>`
+- plus global `--verbose` / `--quiet`
 
 Side effects:
 - runs `git pull` in `<workspace>/tiresias-fw`

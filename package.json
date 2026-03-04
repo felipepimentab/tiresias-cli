@@ -27,7 +27,9 @@
     "release:patch": "bun run scripts/release.ts release patch",
     "release:minor": "bun run scripts/release.ts release minor",
     "release:major": "bun run scripts/release.ts release major",
-    "ci:changed-tests-hints": "bun run scripts/changed-files-hints.ts"
+    "ci:changed-tests-hints": "bun run scripts/changed-files-hints.ts",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:uninstall": "git config --unset core.hooksPath || true"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
