@@ -1,82 +1,26 @@
-import type { Command } from "commander";
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import { stdin as input, stdout as output } from "node:process";
-import { createInterface } from "node:readline/promises";
+import type { Command } from "commander";
 import { readConfig, updateConfig } from "../lib/config";
+import {
+  BOARDS_REPO_URL,
+  DEFAULT_BOARDS_DIRECTORY_NAME,
+  DEFAULT_WORKSPACE_NAME,
+  FW_REPO_URL,
+  FW_REPOSITORY_NAME,
+  HOMEBREW_INSTALL_SCRIPT_URL,
+  INIT_TOOL_REQUIREMENTS,
+  NCS_BUILD_BOARD_TARGET,
+  NORDIC_APP_DISPLAY_NAME,
+  REQUIRED_NCS_TOOLCHAIN_VERSION,
+  TOOL_INSTALL_URLS,
+  type ToolRequirement,
+} from "../lib/constants";
 import { configureEditorBoardRoots, detectPreferredEditorCommand } from "../lib/editor-settings";
 import { runCommand } from "../lib/exec";
 import { error, info, success, warn } from "../lib/logger";
-
-const FW_REPO_URL = "https://github.com/felipepimentab/tiresias-fw";
-const BOARDS_REPO_URL = "https://github.com/felipepimentab/tiresias-boards";
-const HOMEBREW_INSTALL_SCRIPT_URL =
-  "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh";
-const REQUIRED_NCS_TOOLCHAIN_VERSION = "3.0.1";
-
-type Requirement = {
-  name: string;
-  command: string;
-  args?: string[];
-  brewInstall?: string[];
-  officialInstallUrl: string;
-  requiredForInit?: boolean;
-};
-
-const INIT_REQUIREMENTS: Requirement[] = [
-  {
-    name: "git",
-    command: "git",
-    args: ["--version"],
-    brewInstall: ["install", "git"],
-    officialInstallUrl: "https://git-scm.com/downloads",
-    requiredForInit: true,
-  },
-  {
-    name: "west",
-    command: "west",
-    args: ["--version"],
-    brewInstall: ["install", "west"],
-    officialInstallUrl: "https://docs.zephyrproject.org/latest/develop/west/install.html",
-    requiredForInit: true,
-  },
-  {
-    name: "cmake",
-    command: "cmake",
-    args: ["--version"],
-    brewInstall: ["install", "cmake"],
-    officialInstallUrl: "https://cmake.org/download/",
-  },
-  {
-    name: "python3",
-    command: "python3",
-    args: ["--version"],
-    brewInstall: ["install", "python"],
-    officialInstallUrl: "https://www.python.org/downloads/",
-  },
-  {
-    name: "nrfutil",
-    command: "nrfutil",
-    args: ["--version"],
-    brewInstall: ["install", "nrfutil"],
-    officialInstallUrl: "https://www.nordicsemi.com/Products/Development-tools/nrf-util",
-  },
-  {
-    name: "segger-jlink",
-    command: "JLinkExe",
-    brewInstall: ["install", "--cask", "segger-jlink"],
-    officialInstallUrl: "https://www.segger.com/downloads/jlink/",
-  },
-  {
-    name: "nordic-nrf-command-line-tools",
-    command: "nrfjprog",
-    args: ["--version"],
-    brewInstall: ["install", "--cask", "nrf-command-line-tools"],
-    officialInstallUrl:
-      "https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools",
-  },
-];
+import { createAskYesNo, yesNoQuestion } from "../lib/prompts";
 
 type InitOptions = {
   parent: string;
@@ -88,14 +32,15 @@ type InitOptions = {
 };
 
 let cachedBrewPath: string | null | undefined;
+const askYesNo = createAskYesNo({ warn });
 
 export function registerInit(program: Command) {
   program
     .command("init")
     .description("Initialize Tiresias west workspace and clone tiresias-boards as sibling repo")
     .option("-p, --parent <path>", "Parent directory for both repositories", ".")
-    .option("-w, --workspace-name <name>", "West workspace directory name", "tiresias-workspace")
-    .option("-b, --boards-name <name>", "Boards repository directory name", "boards")
+    .option("-w, --workspace-name <name>", "West workspace directory name", DEFAULT_WORKSPACE_NAME)
+    .option("-b, --boards-name <name>", "Boards directory name", DEFAULT_BOARDS_DIRECTORY_NAME)
     .option("--branch <name>", "tiresias-fw manifest repository branch", "main")
     .option("-f, --force", "Overwrite existing workspace/boards directories if they exist", false)
     .option("--skip-west-update", "Skip `west update` during initialization", false)
@@ -103,7 +48,7 @@ export function registerInit(program: Command) {
       const parentPath = resolve(options.parent);
       const workspacePath = resolve(parentPath, options.workspaceName);
       const boardsPath = resolve(parentPath, options.boardsName);
-      const fwRepoPath = resolve(workspacePath, "tiresias-fw");
+      const fwRepoPath = resolve(workspacePath, FW_REPOSITORY_NAME);
 
       if (!existsSync(parentPath)) {
         error(`parent directory not found (${parentPath})`);
@@ -127,15 +72,8 @@ export function registerInit(program: Command) {
         info(`Initializing west workspace in ${workspacePath}...`);
         await runCommand(
           "west",
-          [
-            "init",
-            "-m",
-            FW_REPO_URL,
-            "--mr",
-            options.branch,
-            options.workspaceName,
-          ],
-          { cwd: parentPath, quiet: false }
+          ["init", "-m", FW_REPO_URL, "--mr", options.branch, options.workspaceName],
+          { cwd: parentPath, quiet: false },
         );
 
         if (options.skipWestUpdate) {
@@ -166,7 +104,7 @@ export function registerInit(program: Command) {
         info("Next steps:");
         info(`1. Open your workspace in your editor: ${workspacePath}`);
         info("2. In the NCS extension, add the application if it is not already added.");
-        info("3. Build with board target: tiresias_dk/nrf5340/cpuapp");
+        info(`3. Build with board target: ${NCS_BUILD_BOARD_TARGET}`);
         await promptToOpenWorkspaceInEditor(workspacePath);
       } catch (err) {
         error(String(err));
@@ -178,7 +116,7 @@ export function registerInit(program: Command) {
 async function ensureInitDependencies() {
   info("Checking required dependencies for initialization...");
 
-  for (const requirement of INIT_REQUIREMENTS) {
+  for (const requirement of INIT_TOOL_REQUIREMENTS) {
     await checkAndInstallRequirement(requirement);
   }
 
@@ -198,7 +136,7 @@ async function ensureInitDependencies() {
   success("Dependency bootstrap checks finished.");
 }
 
-async function checkAndInstallRequirement(requirement: Requirement) {
+async function checkAndInstallRequirement(requirement: ToolRequirement) {
   const installedPath = Bun.which(requirement.command);
   if (installedPath) {
     if (!requirement.args || requirement.args.length === 0) {
@@ -233,22 +171,22 @@ async function checkAndInstallNrfConnectDesktop() {
   ];
   const installedPath = appPaths.find((path) => existsSync(path));
   if (installedPath) {
-    success(`nrf-connect-for-desktop found (${installedPath})`);
+    success(`${NORDIC_APP_DISPLAY_NAME} found (${installedPath})`);
     return;
   }
 
-  error("nrf-connect-for-desktop not found");
+  error(`${NORDIC_APP_DISPLAY_NAME} not found`);
   await offerInstall(
-    "nrf-connect-for-desktop",
+    NORDIC_APP_DISPLAY_NAME,
     ["install", "--cask", "nrf-connect"],
-    "https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-desktop/download"
+    TOOL_INSTALL_URLS.nrfConnectDesktop,
   );
 }
 
 async function checkAndInstallNrfToolchain() {
   if (!Bun.which("nrfutil")) {
     warn(
-      `Skipping nRF Connect SDK toolchain check because nrfutil is missing. Expected version: v${REQUIRED_NCS_TOOLCHAIN_VERSION}`
+      `Skipping nRF Connect SDK toolchain check because nrfutil is missing. Expected version: v${REQUIRED_NCS_TOOLCHAIN_VERSION}`,
     );
     return;
   }
@@ -264,7 +202,10 @@ async function checkAndInstallNrfToolchain() {
   if (!/\btoolchain-manager\b/.test(listOutput)) {
     error("nrfutil toolchain-manager command not found");
     const shouldInstall = await askYesNo(
-      "Do you want to install nrfutil toolchain-manager now? [Y/n] (nrfutil install toolchain-manager) "
+      yesNoQuestion(
+        "Do you want to install nrfutil toolchain-manager now?",
+        "nrfutil install toolchain-manager",
+      ),
     );
     if (shouldInstall) {
       try {
@@ -277,7 +218,7 @@ async function checkAndInstallNrfToolchain() {
       }
     } else {
       warn(
-        "Install it manually with `nrfutil install toolchain-manager` to manage NCS toolchains."
+        "Install it manually with `nrfutil install toolchain-manager` to manage NCS toolchains.",
       );
       return;
     }
@@ -292,7 +233,7 @@ async function checkAndInstallNrfToolchain() {
   }
 
   const hasRequiredVersion = new RegExp(`\\bv?${REQUIRED_NCS_TOOLCHAIN_VERSION}\\b`).test(
-    toolchains
+    toolchains,
   );
   if (hasRequiredVersion) {
     success(`nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} found`);
@@ -301,34 +242,32 @@ async function checkAndInstallNrfToolchain() {
 
   error(`nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} not found`);
   const shouldInstall = await askYesNo(
-    `Do you want to install nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} now? [Y/n] (nrfutil toolchain-manager install --ncs-version v${REQUIRED_NCS_TOOLCHAIN_VERSION}) `
+    yesNoQuestion(
+      `Do you want to install nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} now?`,
+      `nrfutil toolchain-manager install --ncs-version v${REQUIRED_NCS_TOOLCHAIN_VERSION}`,
+    ),
   );
   if (shouldInstall) {
     try {
       info(`Installing NCS toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION}...`);
       await runCommand(
         "nrfutil",
-        [
-          "toolchain-manager",
-          "install",
-          "--ncs-version",
-          `v${REQUIRED_NCS_TOOLCHAIN_VERSION}`,
-        ],
-        { quiet: false }
+        ["toolchain-manager", "install", "--ncs-version", `v${REQUIRED_NCS_TOOLCHAIN_VERSION}`],
+        { quiet: false },
       );
       success(`nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} installed.`);
     } catch (err) {
       error(String(err));
-      warn("Reference: https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/installation/install_ncs.html");
+      warn(`Reference: ${TOOL_INSTALL_URLS.ncsToolchainInstall}`);
     }
   } else {
     warn(
-      `Install it manually with: nrfutil toolchain-manager install --ncs-version v${REQUIRED_NCS_TOOLCHAIN_VERSION}`
+      `Install it manually with: nrfutil toolchain-manager install --ncs-version v${REQUIRED_NCS_TOOLCHAIN_VERSION}`,
     );
   }
 }
 
-async function offerRequirementInstall(requirement: Requirement) {
+async function offerRequirementInstall(requirement: ToolRequirement) {
   if (process.platform !== "darwin") {
     warn(`Install ${requirement.name} from the official source: ${requirement.officialInstallUrl}`);
     return;
@@ -343,11 +282,7 @@ async function offerRequirementInstall(requirement: Requirement) {
   await offerInstall(requirement.name, requirement.brewInstall, requirement.officialInstallUrl);
 }
 
-async function offerInstall(
-  toolName: string,
-  brewInstall: string[],
-  officialInstallUrl: string
-) {
+async function offerInstall(toolName: string, brewInstall: string[], officialInstallUrl: string) {
   if (process.platform !== "darwin") {
     warn(`Install ${toolName} from the official source: ${officialInstallUrl}`);
     return;
@@ -361,7 +296,7 @@ async function offerInstall(
 
   const installCommand = `brew ${brewInstall.join(" ")}`;
   const shouldInstall = await askYesNo(
-    `Do you want to install ${toolName} now? [Y/n] (${installCommand}) `
+    yesNoQuestion(`Do you want to install ${toolName} now?`, installCommand),
   );
   if (!shouldInstall) {
     return;
@@ -393,25 +328,24 @@ async function ensureHomebrewAvailable() {
   }
 
   error("Homebrew is not installed.");
-  const shouldInstall = await askYesNo(
-    "Do you want to install Homebrew now? [Y/n] "
-  );
+  const shouldInstall = await askYesNo(yesNoQuestion("Do you want to install Homebrew now?"));
   if (!shouldInstall) {
     warn("Homebrew is required for automatic dependency installation on macOS.");
-    warn("Install it from: https://brew.sh");
+    warn(`Install it from: ${TOOL_INSTALL_URLS.homebrew}`);
     cachedBrewPath = null;
     return null;
   }
 
   try {
     info("Installing Homebrew...");
-    await runCommand("/bin/bash", [
-      "-c",
-      `NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL ${HOMEBREW_INSTALL_SCRIPT_URL})"`,
-    ], { quiet: false });
+    await runCommand(
+      "/bin/bash",
+      ["-c", `NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL ${HOMEBREW_INSTALL_SCRIPT_URL})"`],
+      { quiet: false },
+    );
   } catch (err) {
     error(String(err));
-    warn("Install Homebrew manually from: https://brew.sh");
+    warn(`Install Homebrew manually from: ${TOOL_INSTALL_URLS.homebrew}`);
     cachedBrewPath = null;
     return null;
   }
@@ -437,27 +371,10 @@ function detectBrewPath() {
   );
 }
 
-async function askYesNo(question: string) {
-  if (!input.isTTY || !output.isTTY) {
-    warn("Interactive prompt skipped (non-interactive terminal).");
-    return false;
-  }
-
-  const rl = createInterface({ input, output });
-  try {
-    const answer = (await rl.question(question)).trim().toLowerCase();
-    return answer === "" || answer === "y" || answer === "yes";
-  } finally {
-    rl.close();
-  }
-}
-
 async function promptToOpenWorkspaceInEditor(workspacePath: string) {
   const detectedEditor = detectPreferredEditorCommand();
   const destination = `${detectedEditor?.editor ?? "detected editor"} (${workspacePath})`;
-  const shouldOpen = await askYesNo(
-    `Do you want to open ${destination} now? [Y/n] `
-  );
+  const shouldOpen = await askYesNo(yesNoQuestion(`Do you want to open ${destination} now?`));
   if (!shouldOpen) {
     return;
   }
@@ -491,8 +408,8 @@ async function runPreflightSafeguards(params: {
     const configuredWorkspace = resolve(config.workspacePath);
     if (configuredWorkspace !== params.workspacePath && hasFwRepo(configuredWorkspace)) {
       handleConflict(
-        `Configured workspace already contains tiresias-fw at ${configuredWorkspace}`,
-        params.force
+        `Configured workspace already contains ${FW_REPOSITORY_NAME} at ${configuredWorkspace}`,
+        params.force,
       );
     }
   }
@@ -502,25 +419,28 @@ async function runPreflightSafeguards(params: {
     if (configuredBoards !== params.boardsPath && isGitRepo(configuredBoards)) {
       handleConflict(
         `Configured boards repository already exists at ${configuredBoards}`,
-        params.force
+        params.force,
       );
     }
   }
 
-  const siblingFwRepo = resolve(params.parentPath, "tiresias-fw");
+  const siblingFwRepo = resolve(params.parentPath, FW_REPOSITORY_NAME);
   if (isGitRepo(siblingFwRepo)) {
     handleConflict(
-      `Found tiresias-fw repository at ${siblingFwRepo}. Expected west workspace root instead.`,
-      params.force
+      `Found ${FW_REPOSITORY_NAME} repository at ${siblingFwRepo}. Expected west workspace root instead.`,
+      params.force,
     );
   }
 
   if (hasFwRepo(params.workspacePath)) {
-    handleConflict(`Found existing tiresias-fw repository at ${params.fwRepoPath}`, params.force);
+    handleConflict(
+      `Found existing ${FW_REPOSITORY_NAME} repository at ${params.fwRepoPath}`,
+      params.force,
+    );
   }
 
   if (isGitRepo(params.boardsPath)) {
-    handleConflict(`Found existing tiresias-boards repository at ${params.boardsPath}`, params.force);
+    handleConflict(`Found existing boards repository at ${params.boardsPath}`, params.force);
   }
 }
 
@@ -549,7 +469,7 @@ async function handleExistingDirectory(path: string, label: string, force: boole
 }
 
 function hasFwRepo(workspacePath: string) {
-  return isGitRepo(resolve(workspacePath, "tiresias-fw"));
+  return isGitRepo(resolve(workspacePath, FW_REPOSITORY_NAME));
 }
 
 function isGitRepo(path: string) {

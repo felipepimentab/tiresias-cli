@@ -1,22 +1,57 @@
-import type { Command } from "commander";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { stdin as input, stdout as output } from "node:process";
-import { createInterface } from "node:readline/promises";
-import { readConfig, type TiresiasConfig, updateConfig } from "../lib/config";
+import type { Command } from "commander";
+import { readConfig, updateConfig } from "../lib/config";
+import {
+  BOARDS_REPO_URL,
+  COMMON_TOOL_REQUIREMENTS,
+  DEFAULT_BOARDS_DIRECTORY_NAME,
+  NORDIC_APP_DISPLAY_NAME,
+  REQUIRED_NCS_TOOLCHAIN_VERSION,
+  TOOL_INSTALL_URLS,
+  type ToolRequirement,
+} from "../lib/constants";
 import { configureEditorBoardRoots } from "../lib/editor-settings";
 import { runCommand } from "../lib/exec";
 import { error, info, success, warn } from "../lib/logger";
+import {
+  describeResolvedPath,
+  type PathSource,
+  resolveBoardsPath,
+  resolveWorkspacePath,
+} from "../lib/path-resolution";
+import { createAskYesNo, yesNoQuestion } from "../lib/prompts";
 
-const BOARDS_REPO_URL = "https://github.com/felipepimentab/tiresias-boards";
-const REQUIRED_NCS_TOOLCHAIN_VERSION = "3.0.1";
+type DoctorOptions = {
+  workspace?: string;
+  boardsPath?: string;
+  json?: boolean;
+};
 
-type ToolCheck = {
-  name: string;
-  command: string;
-  args?: string[];
-  brewInstall?: string[];
-  officialInstallUrl: string;
+type CheckStatus = "ok" | "warn" | "error" | "skipped";
+
+type CheckResult = {
+  id: string;
+  status: CheckStatus;
+  message: string;
+};
+
+type DoctorReport = {
+  command: "doctor";
+  generatedAt: string;
+  checks: CheckResult[];
+  paths: {
+    workspacePath: { value: string | null; source: PathSource | null };
+    boardsPath: { value: string | null; source: PathSource | null };
+  };
+  overallStatus: "ok" | "error";
+};
+
+type DoctorContext = {
+  json: boolean;
+  interactive: boolean;
+  checks: CheckResult[];
+  askYesNo: ReturnType<typeof createAskYesNo>;
 };
 
 export function registerDoctor(program: Command) {
@@ -25,132 +60,162 @@ export function registerDoctor(program: Command) {
     .description("Check development environment")
     .option("-w, --workspace <path>", "West workspace path")
     .option("-B, --boards-path <path>", "Path to boards repository (outside workspace)")
-    .action(async (options: { workspace?: string; boardsPath?: string }) => {
-      info("Checking environment...");
+    .option("--json", "Output structured JSON report and skip interactive actions", false)
+    .action(async (options: DoctorOptions) => {
+      const ctx: DoctorContext = {
+        json: options.json ?? false,
+        interactive: !(options.json ?? false),
+        checks: [],
+        askYesNo: createAskYesNo({
+          warn: (message) => emit(ctx, "warn", message),
+        }),
+      };
+
+      emit(ctx, "info", "Checking environment...");
       const config = await readConfig();
 
-      const checks: ToolCheck[] = [
-        {
-          name: "west",
-          command: "west",
-          args: ["--version"],
-          brewInstall: ["install", "west"],
-          officialInstallUrl:
-            "https://docs.zephyrproject.org/latest/develop/west/install.html",
-        },
-        {
-          name: "cmake",
-          command: "cmake",
-          args: ["--version"],
-          brewInstall: ["install", "cmake"],
-          officialInstallUrl: "https://cmake.org/download/",
-        },
-        {
-          name: "python3",
-          command: "python3",
-          args: ["--version"],
-          officialInstallUrl: "https://www.python.org/downloads/",
-        },
-        {
-          name: "nrfutil",
-          command: "nrfutil",
-          args: ["--version"],
-          brewInstall: ["install", "nrfutil"],
-          officialInstallUrl:
-            "https://www.nordicsemi.com/Products/Development-tools/nrf-util",
-        },
-        // SEGGER tools do not provide a consistent version flag across installs.
-        {
-          name: "segger-jlink",
-          command: "JLinkExe",
-          brewInstall: ["install", "--cask", "segger-jlink"],
-          officialInstallUrl: "https://www.segger.com/downloads/jlink/",
-        },
-        {
-          name: "nordic-nrf-command-line-tools",
-          command: "nrfjprog",
-          args: ["--version"],
-          officialInstallUrl:
-            "https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools",
-        },
-      ];
-
-      for (const check of checks) {
-        await checkTool(check);
+      for (const check of COMMON_TOOL_REQUIREMENTS) {
+        await checkTool(check, ctx);
       }
 
-      await checkNrfConnectDesktop();
-      await checkNrfToolchainVersion();
+      await checkNrfConnectDesktop(ctx);
+      await checkNrfToolchainVersion(ctx);
 
-      const workspacePath = await resolveWorkspacePath(options.workspace, config);
-      const workspaceIsValid = workspacePath ? checkWorkspace(workspacePath) : false;
-      if (workspacePath && workspaceIsValid) {
-        await updateConfig({ workspacePath });
+      const workspaceResolution = await resolveWorkspacePath({
+        fromFlag: options.workspace,
+        fromConfig: config.workspacePath,
+      });
+      emit(ctx, "info", describeResolvedPath("workspace path", workspaceResolution));
+
+      if (!workspaceResolution.path) {
+        emit(
+          ctx,
+          "warn",
+          "Could not determine west workspace automatically. Use --workspace or set TIRESIAS_WORKSPACE.",
+        );
       }
 
-      const boardsPath = await checkBoardsPath(options.boardsPath, workspacePath, config);
+      const workspaceIsValid = workspaceResolution.path
+        ? checkWorkspace(workspaceResolution.path, ctx)
+        : false;
+      if (workspaceResolution.path && workspaceIsValid) {
+        await updateConfig({ workspacePath: workspaceResolution.path });
+      }
+
+      const boardsResolution = resolveBoardsPath({
+        fromFlag: options.boardsPath,
+        fromConfig: config.boardsPath,
+        workspacePath: workspaceResolution.path,
+      });
+      emit(ctx, "info", describeResolvedPath("boards path", boardsResolution));
+
+      if (!boardsResolution.path) {
+        emit(
+          ctx,
+          "warn",
+          "Boards repository path could not be determined. Use --boards-path or set TIRESIAS_BOARDS_PATH.",
+        );
+      }
+
+      const boardsPath = await checkBoardsPath(
+        boardsResolution.path,
+        workspaceResolution.path,
+        ctx,
+      );
       if (boardsPath) {
         await updateConfig({ boardsPath });
-        await configureEditorBoardRoots({
-          boardsPath,
-          askYesNo,
-          logger: { info, success, warn, error },
-        });
+        if (!ctx.json) {
+          await configureEditorBoardRoots({
+            boardsPath,
+            askYesNo: ctx.askYesNo,
+            logger: {
+              info: (message) => emit(ctx, "info", message),
+              success: (message) => emit(ctx, "ok", message),
+              warn: (message) => emit(ctx, "warn", message),
+              error: (message) => emit(ctx, "error", message),
+            },
+          });
+        }
       }
 
-      info("Done.");
+      emit(ctx, "info", "Done.");
+      if (ctx.json) {
+        const report = buildJsonReport(ctx, workspaceResolution, boardsResolution);
+        process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+      }
     });
 }
 
-async function checkTool(check: ToolCheck) {
+function buildJsonReport(
+  ctx: DoctorContext,
+  workspaceResolution: Awaited<ReturnType<typeof resolveWorkspacePath>>,
+  boardsResolution: ReturnType<typeof resolveBoardsPath>,
+): DoctorReport {
+  const hasErrors = ctx.checks.some((check) => check.status === "error");
+  return {
+    command: "doctor",
+    generatedAt: new Date().toISOString(),
+    checks: ctx.checks,
+    paths: {
+      workspacePath: { value: workspaceResolution.path, source: workspaceResolution.source },
+      boardsPath: { value: boardsResolution.path, source: boardsResolution.source },
+    },
+    overallStatus: hasErrors ? "error" : "ok",
+  };
+}
+
+async function checkTool(check: ToolRequirement, ctx: DoctorContext) {
   const installedPath = Bun.which(check.command);
   if (!installedPath) {
-    error(`${check.name} not found`);
-    await offerInstall(check);
+    emit(ctx, "error", `${check.name} not found`, check.id);
+    await offerInstall(check, ctx);
     return;
   }
 
   if (!check.args || check.args.length === 0) {
-    success(`${check.name} found (${installedPath})`);
+    emit(ctx, "ok", `${check.name} found (${installedPath})`, check.id);
     return;
   }
 
   try {
     const output = await runCommand(check.command, check.args, { quiet: true });
     const firstLine = output.split("\n")[0] ?? "version output unavailable";
-    success(`${check.name} found (${firstLine})`);
+    emit(ctx, "ok", `${check.name} found (${firstLine})`, check.id);
   } catch {
-    success(`${check.name} found (${installedPath})`);
+    emit(ctx, "ok", `${check.name} found (${installedPath})`, check.id);
   }
 }
 
-async function checkNrfConnectDesktop() {
+async function checkNrfConnectDesktop(ctx: DoctorContext) {
   const appPaths = [
     "/Applications/nRF Connect for Desktop.app",
     resolve(process.env.HOME ?? "", "Applications", "nRF Connect for Desktop.app"),
   ];
   const installedPath = appPaths.find((path) => existsSync(path));
   if (installedPath) {
-    success(`nrf-connect-for-desktop found (${installedPath})`);
+    emit(ctx, "ok", `${NORDIC_APP_DISPLAY_NAME} found (${installedPath})`, "nrf-connect-desktop");
     return;
   }
 
-  const check: ToolCheck = {
-    name: "nrf-connect-for-desktop",
+  const check: ToolRequirement = {
+    id: "nrf-connect-desktop",
+    name: NORDIC_APP_DISPLAY_NAME,
     command: "nrf-connect",
     brewInstall: ["install", "--cask", "nrf-connect"],
-    officialInstallUrl:
-      "https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-desktop/download",
+    officialInstallUrl: TOOL_INSTALL_URLS.nrfConnectDesktop,
   };
 
-  error("nrf-connect-for-desktop not found");
-  await offerInstall(check);
+  emit(ctx, "error", `${NORDIC_APP_DISPLAY_NAME} not found`, check.id);
+  await offerInstall(check, ctx);
 }
 
-async function checkNrfToolchainVersion() {
+async function checkNrfToolchainVersion(ctx: DoctorContext) {
   if (!Bun.which("nrfutil")) {
-    warn(
-      `Skipping nRF Connect SDK toolchain check (requires nrfutil and toolchain-manager). Expected version: v${REQUIRED_NCS_TOOLCHAIN_VERSION}`
+    emit(
+      ctx,
+      "warn",
+      `Skipping nRF Connect SDK toolchain check (requires nrfutil and toolchain-manager). Expected version: v${REQUIRED_NCS_TOOLCHAIN_VERSION}`,
+      "ncs-toolchain",
     );
     return;
   }
@@ -159,162 +224,181 @@ async function checkNrfToolchainVersion() {
   try {
     listOutput = await runCommand("nrfutil", ["list"], { quiet: true });
   } catch {
-    warn("Unable to list nrfutil commands. Skipping toolchain version check.");
+    emit(
+      ctx,
+      "warn",
+      "Unable to list nrfutil commands. Skipping toolchain version check.",
+      "ncs-toolchain",
+    );
     return;
   }
 
   if (!/\btoolchain-manager\b/.test(listOutput)) {
-    error("nrfutil toolchain-manager command not found");
-    const shouldInstall = await askYesNo(
-      "Do you want to install nrfutil toolchain-manager now? [Y/n] (nrfutil install toolchain-manager) "
+    emit(ctx, "error", "nrfutil toolchain-manager command not found", "ncs-toolchain");
+    const shouldInstall = await promptForAction(
+      ctx,
+      yesNoQuestion(
+        "Do you want to install nrfutil toolchain-manager now?",
+        "nrfutil install toolchain-manager",
+      ),
+      "Toolchain manager install prompt was skipped.",
     );
     if (shouldInstall) {
       try {
-        info("Installing nrfutil toolchain-manager...");
+        emit(ctx, "info", "Installing nrfutil toolchain-manager...");
         await runCommand("nrfutil", ["install", "toolchain-manager"], { quiet: false });
-        success("nrfutil toolchain-manager installed.");
+        emit(ctx, "ok", "nrfutil toolchain-manager installed.", "ncs-toolchain");
       } catch (err) {
-        error(String(err));
+        emit(ctx, "error", String(err), "ncs-toolchain");
         return;
       }
     } else {
-      warn(
-        "Install it manually with `nrfutil install toolchain-manager` to verify NCS toolchain versions."
+      emit(
+        ctx,
+        "warn",
+        "Install it manually with `nrfutil install toolchain-manager` to verify NCS toolchain versions.",
+        "ncs-toolchain",
       );
       return;
     }
   }
 
   try {
-    const toolchains = await runCommand("nrfutil", ["toolchain-manager", "list"], {
-      quiet: true,
-    });
-
+    const toolchains = await runCommand("nrfutil", ["toolchain-manager", "list"], { quiet: true });
     const hasRequiredVersion = new RegExp(`\\bv?${REQUIRED_NCS_TOOLCHAIN_VERSION}\\b`).test(
-      toolchains
+      toolchains,
     );
     if (hasRequiredVersion) {
-      success(`nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} found`);
+      emit(
+        ctx,
+        "ok",
+        `nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} found`,
+        "ncs-toolchain",
+      );
       return;
     }
 
-    error(`nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} not found`);
-    warn(
-      `Install it with: nrfutil toolchain-manager install --ncs-version v${REQUIRED_NCS_TOOLCHAIN_VERSION}`
+    emit(
+      ctx,
+      "error",
+      `nRF Connect SDK toolchain v${REQUIRED_NCS_TOOLCHAIN_VERSION} not found`,
+      "ncs-toolchain",
     );
-    warn("Reference: https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/installation/install_ncs.html");
+    emit(
+      ctx,
+      "warn",
+      `Install it with: nrfutil toolchain-manager install --ncs-version v${REQUIRED_NCS_TOOLCHAIN_VERSION}`,
+      "ncs-toolchain",
+    );
+    emit(ctx, "warn", `Reference: ${TOOL_INSTALL_URLS.ncsToolchainInstall}`, "ncs-toolchain");
   } catch (err) {
-    error(`Failed to check toolchains via nrfutil toolchain-manager: ${String(err)}`);
+    emit(
+      ctx,
+      "error",
+      `Failed to check toolchains via nrfutil toolchain-manager: ${String(err)}`,
+      "ncs-toolchain",
+    );
   }
 }
 
-async function offerInstall(check: ToolCheck) {
+async function offerInstall(check: ToolRequirement, ctx: DoctorContext) {
+  if (ctx.json) {
+    return;
+  }
+
   if (process.platform !== "darwin") {
-    warn(
-      `Install ${check.name} from the official source: ${check.officialInstallUrl}`
+    emit(
+      ctx,
+      "warn",
+      `Install ${check.name} from the official source: ${check.officialInstallUrl}`,
+      check.id,
     );
     return;
   }
 
   if (!Bun.which("brew")) {
-    warn("Homebrew is not installed. Install it from https://brew.sh and retry.");
-    warn(`Official install guide for ${check.name}: ${check.officialInstallUrl}`);
+    emit(
+      ctx,
+      "warn",
+      `Homebrew is not installed. Install it from ${TOOL_INSTALL_URLS.homebrew} and retry.`,
+      check.id,
+    );
+    emit(
+      ctx,
+      "warn",
+      `Official install guide for ${check.name}: ${check.officialInstallUrl}`,
+      check.id,
+    );
     return;
   }
 
   if (!check.brewInstall) {
-    warn(`No Homebrew package configured for ${check.name}.`);
-    warn(`Official install guide: ${check.officialInstallUrl}`);
+    emit(ctx, "warn", `No Homebrew package configured for ${check.name}.`, check.id);
+    emit(ctx, "warn", `Official install guide: ${check.officialInstallUrl}`, check.id);
     return;
   }
 
   const installCommand = `brew ${check.brewInstall.join(" ")}`;
-  const shouldInstall = await askYesNo(
-    `Do you want to install ${check.name} now? [Y/n] (${installCommand}) `
+  const shouldInstall = await promptForAction(
+    ctx,
+    yesNoQuestion(`Do you want to install ${check.name} now?`, installCommand),
+    `${check.name} install prompt was skipped.`,
   );
   if (!shouldInstall) {
     return;
   }
 
   try {
-    info(`Installing ${check.name} with Homebrew...`);
+    emit(ctx, "info", `Installing ${check.name} with Homebrew...`, check.id);
     await runCommand("brew", check.brewInstall, { quiet: false });
-    success(`${check.name} installed.`);
+    emit(ctx, "ok", `${check.name} installed.`, check.id);
   } catch (err) {
-    error(String(err));
+    emit(ctx, "error", String(err), check.id);
   }
 }
 
-async function resolveWorkspacePath(fromOption: string | undefined, config: TiresiasConfig) {
-  if (fromOption) {
-    return resolve(fromOption);
-  }
-
-  const fromEnv = process.env.TIRESIAS_WORKSPACE;
-  if (fromEnv) {
-    return resolve(fromEnv);
-  }
-
-  if (config.workspacePath) {
-    return resolve(config.workspacePath);
-  }
-
-  try {
-    const workspace = await runCommand("west", ["topdir"], { quiet: true });
-    return resolve(workspace);
-  } catch {
-    warn(
-      "Could not determine west workspace automatically. Use --workspace or set TIRESIAS_WORKSPACE."
-    );
-    return null;
-  }
-}
-
-function checkWorkspace(workspacePath: string) {
+function checkWorkspace(workspacePath: string, ctx: DoctorContext) {
   if (!existsSync(workspacePath)) {
-    error(`workspace not found (${workspacePath})`);
+    emit(ctx, "error", `workspace not found (${workspacePath})`, "workspace");
     return false;
   }
 
   const westDir = resolve(workspacePath, ".west");
   if (!existsSync(westDir)) {
-    error(`invalid west workspace (${workspacePath})`);
+    emit(ctx, "error", `invalid west workspace (${workspacePath})`, "workspace");
     return false;
   }
 
-  success(`west workspace found (${workspacePath})`);
+  emit(ctx, "ok", `west workspace found (${workspacePath})`, "workspace");
   return true;
 }
 
 async function checkBoardsPath(
-  boardsPathOption: string | undefined,
+  boardsPath: string | null,
   workspacePath: string | null,
-  config: TiresiasConfig
+  ctx: DoctorContext,
 ) {
-  const boardsPathRaw =
-    boardsPathOption ??
-    process.env.TIRESIAS_BOARDS_PATH ??
-    config.boardsPath ??
-    (workspacePath ? resolve(workspacePath, "..", "boards") : undefined);
-
-  if (!boardsPathRaw) {
-    warn(
-      "Boards repository path could not be determined. Use --boards-path or set TIRESIAS_BOARDS_PATH."
-    );
-    return;
+  if (!boardsPath) {
+    return null;
   }
 
-  const boardsPath = resolve(boardsPathRaw);
   if (!existsSync(boardsPath)) {
-    error(`boards repository not found (${boardsPath})`);
+    emit(ctx, "error", `boards repository not found (${boardsPath})`, "boards");
     if (workspacePath) {
-      warn(`Expected location: ${resolve(workspacePath, "..", "boards")}`);
+      emit(
+        ctx,
+        "warn",
+        `Expected location: ${resolve(workspacePath, "..", DEFAULT_BOARDS_DIRECTORY_NAME)}`,
+        "boards",
+      );
     }
-    const shouldClone = await askYesNo(
-      "Do you want to clone tiresias-boards automatically now? [Y/n] "
+    const shouldClone = await promptForAction(
+      ctx,
+      yesNoQuestion("Do you want to clone tiresias-boards automatically now?"),
+      "Boards clone prompt was skipped.",
     );
     if (shouldClone) {
-      const cloned = await cloneBoardsRepository(boardsPath);
+      const cloned = await cloneBoardsRepository(boardsPath, ctx);
       if (cloned) {
         return boardsPath;
       }
@@ -323,38 +407,36 @@ async function checkBoardsPath(
   }
 
   if (workspacePath && isInsideDirectory(boardsPath, workspacePath)) {
-    error("boards repository should be outside the west workspace");
-    warn(`Move boards repo to: ${resolve(workspacePath, "..", "boards")}`);
+    emit(ctx, "error", "boards repository should be outside the west workspace", "boards");
+    emit(
+      ctx,
+      "warn",
+      `Move boards repo to: ${resolve(workspacePath, "..", DEFAULT_BOARDS_DIRECTORY_NAME)}`,
+      "boards",
+    );
     return null;
   }
 
-  success(`boards repository found (${boardsPath})`);
+  emit(ctx, "ok", `boards repository found (${boardsPath})`, "boards");
   return boardsPath;
 }
 
-async function askYesNo(question: string) {
-  if (!input.isTTY || !output.isTTY) {
-    warn("Interactive prompt skipped (non-interactive terminal).");
+async function promptForAction(ctx: DoctorContext, question: string, context: string) {
+  if (!ctx.interactive) {
+    emit(ctx, "skipped", context, "prompt");
     return false;
   }
-
-  const rl = createInterface({ input, output });
-  try {
-    const answer = (await rl.question(question)).trim().toLowerCase();
-    return answer === "" || answer === "y" || answer === "yes";
-  } finally {
-    rl.close();
-  }
+  return ctx.askYesNo(question);
 }
 
-async function cloneBoardsRepository(boardsPath: string) {
+async function cloneBoardsRepository(boardsPath: string, ctx: DoctorContext) {
   try {
-    info(`Cloning tiresias-boards into ${boardsPath}...`);
+    emit(ctx, "info", `Cloning tiresias-boards into ${boardsPath}...`, "boards");
     await runCommand("git", ["clone", BOARDS_REPO_URL, boardsPath], { quiet: false });
-    success("tiresias-boards cloned successfully.");
+    emit(ctx, "ok", "tiresias-boards cloned successfully.", "boards");
     return true;
   } catch (err) {
-    error(String(err));
+    emit(ctx, "error", String(err), "boards");
     return false;
   }
 }
@@ -366,4 +448,43 @@ function isInsideDirectory(candidatePath: string, parentPath: string) {
     normalizedCandidate === normalizedParent ||
     normalizedCandidate.startsWith(`${normalizedParent}/`)
   );
+}
+
+function emit(
+  ctx: DoctorContext,
+  level: "info" | "ok" | "warn" | "error" | "skipped",
+  message: string,
+  id = "doctor",
+) {
+  if (level !== "info") {
+    const statusByLevel: Record<Exclude<typeof level, "info">, CheckStatus> = {
+      ok: "ok",
+      warn: "warn",
+      error: "error",
+      skipped: "skipped",
+    };
+    ctx.checks.push({
+      id,
+      status: statusByLevel[level],
+      message,
+    });
+  }
+
+  if (ctx.json) {
+    return;
+  }
+
+  if (level === "info") {
+    info(message);
+    return;
+  }
+  if (level === "ok") {
+    success(message);
+    return;
+  }
+  if (level === "warn" || level === "skipped") {
+    warn(message);
+    return;
+  }
+  error(message);
 }

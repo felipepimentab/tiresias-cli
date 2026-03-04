@@ -1,5 +1,5 @@
-import type { Command } from "commander";
 import { resolve } from "node:path";
+import type { Command } from "commander";
 import { getConfigFilePath, readConfig, updateConfig } from "../lib/config";
 import { error, info, success, warn } from "../lib/logger";
 
@@ -9,7 +9,9 @@ type SetOptions = {
 };
 
 export function registerConfig(program: Command) {
-  const config = program.command("config").description("Manage persisted Tiresias CLI configuration");
+  const config = program
+    .command("config")
+    .description("Manage persisted Tiresias CLI configuration");
 
   config
     .command("show")

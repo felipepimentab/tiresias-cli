@@ -3,11 +3,7 @@ type RunOptions = {
   quiet?: boolean;
 };
 
-export async function runCommand(
-  command: string,
-  args: string[] = [],
-  options: RunOptions = {}
-) {
+export async function runCommand(command: string, args: string[] = [], options: RunOptions = {}) {
   const quiet = options.quiet ?? true;
 
   if (!quiet) {
@@ -41,7 +37,7 @@ export async function runCommand(
   if (exitCode !== 0) {
     const details = (stderr || stdout).trim();
     throw new Error(
-      `Command failed (${exitCode}): ${command} ${args.join(" ")}${details ? `\n${details}` : ""}`
+      `Command failed (${exitCode}): ${command} ${args.join(" ")}${details ? `\n${details}` : ""}`,
     );
   }
 
