@@ -4,6 +4,9 @@ Tiresias firmware development environment checker
 
 Options:
   -V, --version     output the version number
+  --verbose         Enable verbose logs for command execution (default: false)
+  --quiet           Reduce command output to warnings/errors only (default:
+                    false)
   -h, --help        display help for command
 
 Commands:

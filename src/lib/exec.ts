@@ -1,10 +1,20 @@
+import { debug, isVerbose } from "./logger";
+
 type RunOptions = {
   cwd?: string;
   quiet?: boolean;
 };
 
+/**
+ * Executes a command and returns trimmed stdout in quiet mode.
+ * Throws on non-zero exit with stderr/stdout details to simplify command callers.
+ */
 export async function runCommand(command: string, args: string[] = [], options: RunOptions = {}) {
   const quiet = options.quiet ?? true;
+  if (isVerbose()) {
+    const location = options.cwd ? ` (cwd: ${options.cwd})` : "";
+    debug(`exec: ${command} ${args.join(" ")}${location}`);
+  }
 
   if (!quiet) {
     const proc = Bun.spawn({

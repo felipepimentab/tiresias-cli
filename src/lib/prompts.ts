@@ -12,8 +12,13 @@ type AskYesNoOptions = {
 
 export type AskYesNo = (question: string, options?: AskYesNoOptions) => Promise<boolean>;
 
+/**
+ * Builds a reusable yes/no prompt function with deterministic non-interactive behavior.
+ */
 export function createAskYesNo(logger: PromptLogger): AskYesNo {
   return async (question, options = {}) => {
+    // Safety policy: in non-interactive shells we default to "No" unless
+    // explicitly overridden, so automation cannot accidentally mutate state.
     const nonInteractiveDefault = options.nonInteractiveDefault ?? false;
     if (!input.isTTY || !output.isTTY) {
       logger.warn(
@@ -34,6 +39,9 @@ export function createAskYesNo(logger: PromptLogger): AskYesNo {
   };
 }
 
+/**
+ * Formats a standard `[Y/n]` question, optionally appending execution details.
+ */
 export function yesNoQuestion(message: string, detail?: string) {
   return `${message} [Y/n]${detail ? ` (${detail})` : ""} `;
 }
