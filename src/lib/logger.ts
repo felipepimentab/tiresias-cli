@@ -24,16 +24,16 @@ export function info(message: string) {
 }
 
 export function success(message: string) {
-  const prefix = paint("\uf00c Success:", ANSI.green, process.stdout);
+  const prefix = paint("✔︎ Success:", ANSI.green, process.stdout);
   console.log(`${prefix} ${message}`);
 }
 
 export function warn(message: string) {
-  const prefix = paint("\ue654 Warning:", ANSI.yellow, process.stdout);
+  const prefix = paint("⚠︎ Warning:", ANSI.yellow, process.stdout);
   console.log(`${prefix} ${message}`);
 }
 
 export function error(message: string) {
-  const prefix = paint("\uea87 Error:", ANSI.red, process.stderr);
+  const prefix = paint("✘ Error:", ANSI.red, process.stderr);
   console.error(`${prefix} ${message}`);
 }

@@ -15,7 +15,7 @@ export function registerUpdate(program: Command) {
     .command("update")
     .description("Pull latest changes for tiresias-fw and tiresias-boards")
     .option("-w, --workspace <path>", "West workspace path")
-    .option("-B, --boards-path <path>", "Path to tiresias-boards repository (outside workspace)")
+    .option("-B, --boards-path <path>", "Path to boards repository (outside workspace)")
     .action(async (options: UpdateOptions) => {
       const config = await readConfig();
       const workspacePath = await resolveWorkspacePath(options.workspace, config);
@@ -87,7 +87,7 @@ function resolveBoardsPath(
     fromOption ??
     process.env.TIRESIAS_BOARDS_PATH ??
     config.boardsPath ??
-    (workspacePath ? resolve(workspacePath, "..", "tiresias-boards") : null);
+    (workspacePath ? resolve(workspacePath, "..", "boards") : null);
 
   if (!boardsPath) {
     warn(

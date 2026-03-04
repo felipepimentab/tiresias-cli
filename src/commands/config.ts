@@ -34,7 +34,7 @@ export function registerConfig(program: Command) {
     .command("set")
     .description("Persist workspace and/or boards paths globally")
     .option("-w, --workspace <path>", "West workspace path")
-    .option("-B, --boards-path <path>", "Path to tiresias-boards repository")
+    .option("-B, --boards-path <path>", "Path to boards repository")
     .action(async (options: SetOptions) => {
       if (!options.workspace && !options.boardsPath) {
         error("No values provided. Use --workspace and/or --boards-path.");

@@ -87,10 +87,10 @@ Prerequisite for release publishing:
 
 ## Commands
 
-- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones `tiresias-boards` in the same parent directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
+- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones `tiresias-boards` into a sibling `boards` directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
 - `config`: persists and shows global CLI config (workspace and boards paths)
 - `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing)
-- `update`: runs `git pull` in `<workspace>/tiresias-fw` and `tiresias-boards`
+- `update`: runs `git pull` in `<workspace>/tiresias-fw` and `boards`
 
 ## Command Reference
 
@@ -101,7 +101,7 @@ Initialize local repositories and configure CLI memory.
 Options:
 - `--parent <path>`: parent directory where workspace and boards repositories are created.
 - `--workspace-name <name>`: workspace directory name (default `tiresias-workspace`).
-- `--boards-name <name>`: boards directory name (default `tiresias-boards`).
+- `--boards-name <name>`: boards directory name (default `boards`).
 - `--branch <name>`: branch used for `tiresias-fw` manifest repo (default `main`).
 - `--force`: overwrite conflicting workspace/boards directories.
 - `--skip-west-update`: skip `west update` and print reminder.
@@ -130,7 +130,7 @@ Validate local development environment and repositories.
 
 Options:
 - `--workspace <path>`: west workspace path.
-- `--boards-path <path>`: path to `tiresias-boards` repository.
+- `--boards-path <path>`: path to boards repository.
 
 Checks:
 - required host tools (`west`, `cmake`, `python3`, `nrfutil`, `segger-jlink`, `nrfjprog`).
@@ -150,11 +150,11 @@ Pull latest changes for both repositories.
 
 Options:
 - `--workspace <path>`: west workspace path.
-- `--boards-path <path>`: path to `tiresias-boards`.
+- `--boards-path <path>`: path to boards repository.
 
 Behavior:
 - resolves `tiresias-fw` at `<workspace>/tiresias-fw`.
-- runs `git pull` in both `<workspace>/tiresias-fw` and `tiresias-boards`.
+- runs `git pull` in both `<workspace>/tiresias-fw` and `boards`.
 - updates persisted config with resolved paths after successful update.
 
 ## Tiresias FW Onboarding
@@ -164,7 +164,7 @@ The intended workflow is:
 1. Initialize both repositories in one command:
 
 ```bash
-tiresias init --parent . --workspace-name tiresias-workspace --boards-name tiresias-boards
+tiresias init --parent . --workspace-name tiresias-workspace --boards-name boards
 ```
 
 > [!TIP]
@@ -172,7 +172,7 @@ tiresias init --parent . --workspace-name tiresias-workspace --boards-name tires
 
 This creates:
 - `./tiresias-workspace` (west workspace with `tiresias-fw`)
-- `./tiresias-boards` (boards repo, outside workspace)
+- `./boards` (boards repo, outside workspace)
 
 It also automatically saves these paths in `~/.config/tiresias-cli/config.json`.
 
@@ -192,7 +192,7 @@ Optional `init` flags:
 - NCS toolchain version `v3.0.1` via `nrfutil toolchain-manager`
 
 `init` safeguards run before cloning:
-- checks persisted config paths to detect existing `tiresias-fw` / `tiresias-boards` repos.
+- checks persisted config paths to detect existing `tiresias-fw` / `boards` repos.
 - checks target parent path for conflicting repository layouts.
 - stops by default when conflicts are found.
 - with `--force`, continues and overwrites target workspace/boards directories.
@@ -204,7 +204,7 @@ Reference tutorial: [How to add board roots in NCS extension](https://youtu.be/V
 3. Run doctor with explicit paths:
 
 ```bash
-tiresias doctor --workspace ./tiresias-workspace --boards-path ./tiresias-boards
+tiresias doctor --workspace ./tiresias-workspace --boards-path ./boards
 ```
 
 Because `init` persists config automatically, you can now run:
@@ -218,14 +218,14 @@ You can still set environment variables to override defaults:
 
 ```bash
 export TIRESIAS_WORKSPACE="$HOME/path/to/tiresias-workspace"
-export TIRESIAS_BOARDS_PATH="$HOME/path/to/tiresias-boards"
+export TIRESIAS_BOARDS_PATH="$HOME/path/to/boards"
 tiresias doctor
 ```
 
 Manually persist values globally (only needed to change existing config):
 
 ```bash
-tiresias config set --workspace ./tiresias-workspace --boards-path ./tiresias-boards
+tiresias config set --workspace ./tiresias-workspace --boards-path ./boards
 tiresias config show
 ```
 
@@ -240,7 +240,7 @@ Resolution precedence for workspace/boards paths:
 Update both repositories:
 
 ```bash
-tiresias update --workspace ./tiresias-workspace --boards-path ./tiresias-boards
+tiresias update --workspace ./tiresias-workspace --boards-path ./boards
 ```
 
 ## Testing

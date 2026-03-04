@@ -166,8 +166,6 @@ describe("init command", () => {
         parent,
         "--workspace-name",
         "tiresias-workspace",
-        "--boards-name",
-        "tiresias-boards",
         "--skip-west-update",
       ],
       {
@@ -192,7 +190,7 @@ describe("init command", () => {
       readText(resolve(xdgConfigHome, "tiresias-cli", "config.json"))
     ) as { workspacePath: string; boardsPath: string };
     expect(config.workspacePath).toBe(resolve(parent, "tiresias-workspace"));
-    expect(config.boardsPath).toBe(resolve(parent, "tiresias-boards"));
+    expect(config.boardsPath).toBe(resolve(parent, "boards"));
   });
 
   it("honors config safeguards when another configured workspace already exists", () => {

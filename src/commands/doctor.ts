@@ -23,7 +23,7 @@ export function registerDoctor(program: Command) {
     .command("doctor")
     .description("Check development environment")
     .option("-w, --workspace <path>", "West workspace path")
-    .option("-B, --boards-path <path>", "Path to tiresias-boards repository (outside workspace)")
+    .option("-B, --boards-path <path>", "Path to boards repository (outside workspace)")
     .action(async (options: { workspace?: string; boardsPath?: string }) => {
       info("Checking environment...");
       const config = await readConfig();
@@ -289,7 +289,7 @@ async function checkBoardsPath(
     boardsPathOption ??
     process.env.TIRESIAS_BOARDS_PATH ??
     config.boardsPath ??
-    (workspacePath ? resolve(workspacePath, "..", "tiresias-boards") : undefined);
+    (workspacePath ? resolve(workspacePath, "..", "boards") : undefined);
 
   if (!boardsPathRaw) {
     warn(
@@ -302,7 +302,7 @@ async function checkBoardsPath(
   if (!existsSync(boardsPath)) {
     error(`boards repository not found (${boardsPath})`);
     if (workspacePath) {
-      warn(`Expected location: ${resolve(workspacePath, "..", "tiresias-boards")}`);
+      warn(`Expected location: ${resolve(workspacePath, "..", "boards")}`);
     }
     const shouldClone = await askYesNo(
       "Do you want to clone tiresias-boards automatically now? [Y/n] "
@@ -318,7 +318,7 @@ async function checkBoardsPath(
 
   if (workspacePath && isInsideDirectory(boardsPath, workspacePath)) {
     error("boards repository should be outside the west workspace");
-    warn(`Move boards repo to: ${resolve(workspacePath, "..", "tiresias-boards")}`);
+    warn(`Move boards repo to: ${resolve(workspacePath, "..", "boards")}`);
     return null;
   }
 

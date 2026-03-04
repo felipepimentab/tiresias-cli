@@ -94,7 +94,7 @@ export function registerInit(program: Command) {
     .description("Initialize Tiresias west workspace and clone tiresias-boards as sibling repo")
     .option("-p, --parent <path>", "Parent directory for both repositories", ".")
     .option("-w, --workspace-name <name>", "West workspace directory name", "tiresias-workspace")
-    .option("-b, --boards-name <name>", "Boards repository directory name", "tiresias-boards")
+    .option("-b, --boards-name <name>", "Boards repository directory name", "boards")
     .option("--branch <name>", "tiresias-fw manifest repository branch", "main")
     .option("-f, --force", "Overwrite existing workspace/boards directories if they exist", false)
     .option("--skip-west-update", "Skip `west update` during initialization", false)
