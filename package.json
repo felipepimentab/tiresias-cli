@@ -10,7 +10,10 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "cli": "bun run src/index.ts",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "test:file": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "clean:dist": "rm -rf dist && mkdir -p dist",
@@ -23,16 +26,17 @@
     "version:major": "bun run scripts/release.ts version major",
     "release:patch": "bun run scripts/release.ts release patch",
     "release:minor": "bun run scripts/release.ts release minor",
-    "release:major": "bun run scripts/release.ts release major"
+    "release:major": "bun run scripts/release.ts release major",
+    "ci:changed-tests-hints": "bun run scripts/changed-files-hints.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "@biomejs/biome": "^2.4.5",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "commander": "^14.0.3",
-    "json5": "^2.2.3"
+    "json5": "^2.2.3",
+    "zod": "^4.3.6"
   }
 }

@@ -10,11 +10,7 @@ type PackageJson = {
   [key: string]: unknown;
 };
 
-const ARTIFACTS = [
-  "dist/tiresias-macos",
-  "dist/tiresias-linux",
-  "dist/tiresias-win.exe",
-];
+const ARTIFACTS = ["dist/tiresias-macos", "dist/tiresias-linux", "dist/tiresias-win.exe"];
 
 async function main() {
   const [, , modeArg, bumpArg] = Bun.argv;
@@ -52,15 +48,7 @@ async function main() {
   run("git", ["push", "origin", "main"]);
   run("git", ["push", "origin", tag]);
 
-  run("gh", [
-    "release",
-    "create",
-    tag,
-    ...ARTIFACTS,
-    "--title",
-    tag,
-    "--generate-notes",
-  ]);
+  run("gh", ["release", "create", tag, ...ARTIFACTS, "--title", tag, "--generate-notes"]);
 
   log(`Release published: ${tag}`);
 }
@@ -138,11 +126,7 @@ function assertArtifactsExist() {
   }
 }
 
-function run(
-  command: string,
-  args: string[],
-  options: { quiet?: boolean } = {}
-): string {
+function run(command: string, args: string[], options: { quiet?: boolean } = {}): string {
   const proc = Bun.spawnSync({
     cmd: [command, ...args],
     stdout: "pipe",
@@ -166,7 +150,7 @@ function run(
     fail(
       `Command failed (${proc.exitCode}): ${command} ${args.join(" ")}${
         stderr.trim() ? `\n${stderr.trim()}` : ""
-      }`
+      }`,
     );
   }
 
