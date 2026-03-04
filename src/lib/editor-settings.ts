@@ -31,6 +31,10 @@ type ConfigureBoardRootsOptions = {
 
 const BOARD_ROOTS_KEY = "nrf-connect.boardRoots";
 
+/**
+ * Adds boards path entries to detected editor settings files (VS Code and/or Trae)
+ * after explicit user confirmation.
+ */
 export async function configureEditorBoardRoots(options: ConfigureBoardRootsOptions) {
   const boardsPath = resolve(options.boardsPath);
   const targets = detectEditorSettingsTargets();
@@ -48,6 +52,10 @@ export async function configureEditorBoardRoots(options: ConfigureBoardRootsOpti
   }
 }
 
+/**
+ * Chooses the best editor CLI command to open a workspace path.
+ * Priority: terminal hint -> existing settings target -> first detected command.
+ */
 export function detectPreferredEditorCommand() {
   const termProgram = (process.env.TERM_PROGRAM ?? "").toLowerCase();
   const candidates: EditorCommand[] = [];
@@ -98,6 +106,9 @@ function detectEditorSettingsTargets() {
   return definitions.filter((target) => existsSync(dirname(target.settingsPath)));
 }
 
+/**
+ * Returns default settings.json locations for each supported platform.
+ */
 export function getSettingsPathDefinitionsForPlatform(
   platform: NodeJS.Platform,
   home: string,
@@ -158,6 +169,9 @@ export function getSettingsPathDefinitionsForPlatform(
   ];
 }
 
+/**
+ * Applies board-roots update logic for one concrete editor settings file.
+ */
 async function configureSingleTarget(
   target: EditorSettingsTarget,
   boardsPath: string,
@@ -217,6 +231,9 @@ async function configureSingleTarget(
   }
 }
 
+/**
+ * Loads and parses settings content using JSON5 (to support JSONC-like files).
+ */
 async function loadSettings(path: string, logger: Pick<Logger, "error">) {
   if (!existsSync(path)) {
     return {} as Record<string, unknown>;

@@ -12,6 +12,10 @@ type PackageJson = {
 
 const ARTIFACTS = ["dist/tiresias-macos", "dist/tiresias-linux", "dist/tiresias-win.exe"];
 
+/**
+ * Entry point for release/version automation.
+ * Supports `version` mode (bump only) and `release` mode (bump + tag + publish).
+ */
 async function main() {
   const [, , modeArg, bumpArg] = Bun.argv;
   const mode = parseMode(modeArg);
@@ -53,6 +57,9 @@ async function main() {
   log(`Release published: ${tag}`);
 }
 
+/**
+ * Validates release mode argument.
+ */
 function parseMode(value: string | undefined): Mode {
   if (value === "version" || value === "release") {
     return value;
@@ -61,6 +68,9 @@ function parseMode(value: string | undefined): Mode {
   fail("Usage: bun run scripts/release.ts <version|release> <patch|minor|major>");
 }
 
+/**
+ * Validates semver bump argument.
+ */
 function parseBump(value: string | undefined): BumpType {
   if (value === "patch" || value === "minor" || value === "major") {
     return value;
@@ -69,12 +79,18 @@ function parseBump(value: string | undefined): BumpType {
   fail("Usage: bun run scripts/release.ts <version|release> <patch|minor|major>");
 }
 
+/**
+ * Ensures required external commands are available in PATH.
+ */
 function ensureCommand(command: string) {
   if (!Bun.which(command)) {
     fail(`Required command not found in PATH: ${command}`);
   }
 }
 
+/**
+ * Fails when the working tree has pending changes.
+ */
 function assertCleanWorkingTree() {
   const status = run("git", ["status", "--porcelain"], { quiet: true });
   if (status.length > 0) {
@@ -82,6 +98,9 @@ function assertCleanWorkingTree() {
   }
 }
 
+/**
+ * Fails when current branch is not `main`.
+ */
 function assertOnMainBranch() {
   const branch = run("git", ["branch", "--show-current"], { quiet: true }).trim();
   if (branch !== "main") {
@@ -89,11 +108,17 @@ function assertOnMainBranch() {
   }
 }
 
+/**
+ * Reads package metadata from package.json.
+ */
 async function readPackageJson(): Promise<PackageJson> {
   const text = await Bun.file("package.json").text();
   return JSON.parse(text) as PackageJson;
 }
 
+/**
+ * Computes the next semantic version for a bump type.
+ */
 function incrementVersion(version: string, bump: BumpType): string {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   if (!match) {
@@ -118,6 +143,9 @@ function incrementVersion(version: string, bump: BumpType): string {
   return `${major}.${minor}.${patch}`;
 }
 
+/**
+ * Verifies that all compiled release binaries exist before publishing.
+ */
 function assertArtifactsExist() {
   for (const artifact of ARTIFACTS) {
     if (!existsSync(artifact)) {
@@ -126,6 +154,9 @@ function assertArtifactsExist() {
   }
 }
 
+/**
+ * Runs a child process synchronously and optionally echoes command output.
+ */
 function run(command: string, args: string[], options: { quiet?: boolean } = {}): string {
   const proc = Bun.spawnSync({
     cmd: [command, ...args],
@@ -157,10 +188,16 @@ function run(command: string, args: string[], options: { quiet?: boolean } = {})
   return stdout;
 }
 
+/**
+ * Consistent informational logger for release script output.
+ */
 function log(message: string) {
   console.log(`[release] ${message}`);
 }
 
+/**
+ * Emits an error and terminates the process.
+ */
 function fail(message: string): never {
   console.error(`[release] ${message}`);
   process.exit(1);

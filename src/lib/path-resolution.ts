@@ -1,13 +1,7 @@
 import { resolve } from "node:path";
 import { DEFAULT_BOARDS_DIRECTORY_NAME, ENV_VARS } from "./constants";
 import { runCommand } from "./exec";
-
-export type PathSource = "flag" | "env" | "config" | "auto" | "default";
-
-export type ResolvedPath = {
-  path: string | null;
-  source: PathSource | null;
-};
+import type { ResolvedPath } from "./types";
 
 type WorkspaceResolutionInput = {
   fromFlag?: string;
@@ -20,6 +14,10 @@ type BoardsResolutionInput = {
   workspacePath: string | null;
 };
 
+/**
+ * Resolves workspace path using this precedence:
+ * flag -> env -> config -> `west topdir`.
+ */
 export async function resolveWorkspacePath(input: WorkspaceResolutionInput): Promise<ResolvedPath> {
   if (input.fromFlag) {
     return { path: resolve(input.fromFlag), source: "flag" };
@@ -42,6 +40,10 @@ export async function resolveWorkspacePath(input: WorkspaceResolutionInput): Pro
   }
 }
 
+/**
+ * Resolves boards path using this precedence:
+ * flag -> env -> config -> sibling default (`../boards`).
+ */
 export function resolveBoardsPath(input: BoardsResolutionInput): ResolvedPath {
   if (input.fromFlag) {
     return { path: resolve(input.fromFlag), source: "flag" };
@@ -66,6 +68,9 @@ export function resolveBoardsPath(input: BoardsResolutionInput): ResolvedPath {
   return { path: null, source: null };
 }
 
+/**
+ * Returns a consistent human-readable string for resolved path diagnostics.
+ */
 export function describeResolvedPath(label: string, resolved: ResolvedPath) {
   if (!resolved.path || !resolved.source) {
     return `${label}: unresolved`;

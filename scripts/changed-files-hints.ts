@@ -22,6 +22,10 @@ const HINTS: Hint[] = [
   { pattern: /^README\.md$/, tests: ["bun run lint"] },
 ];
 
+/**
+ * Executes a command and returns trimmed stdout on success.
+ * Returns empty string on failure because hints are best-effort only.
+ */
 function run(command: string, args: string[]) {
   const result = Bun.spawnSync({
     cmd: [command, ...args],
@@ -35,6 +39,10 @@ function run(command: string, args: string[]) {
   return result.stdout.toString().trim();
 }
 
+/**
+ * Collects changed files relative to PR base when available, otherwise falls
+ * back to the latest commit diff.
+ */
 function getChangedFiles() {
   const baseRef = process.env.GITHUB_BASE_REF;
   if (baseRef) {
@@ -51,6 +59,9 @@ function getChangedFiles() {
   return fallback.split("\n").filter(Boolean);
 }
 
+/**
+ * Prints targeted test/lint suggestions for the currently changed files.
+ */
 function main() {
   const changedFiles = getChangedFiles();
   if (changedFiles.length === 0) {

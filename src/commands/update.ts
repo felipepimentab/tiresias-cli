@@ -16,6 +16,10 @@ type UpdateOptions = {
   boardsPath?: string;
 };
 
+/**
+ * Registers `tiresias update`, which pulls latest changes from both
+ * `<workspace>/tiresias-fw` and the sibling `boards` repository.
+ */
 export function registerUpdate(program: Command) {
   program
     .command("update")
@@ -83,6 +87,9 @@ export function registerUpdate(program: Command) {
     });
 }
 
+/**
+ * Returns true when a directory contains a `.git` marker.
+ */
 function isGitRepo(path: string) {
   return existsSync(path) && existsSync(resolve(path, ".git"));
 }

@@ -8,6 +8,10 @@ type SetOptions = {
   boardsPath?: string;
 };
 
+/**
+ * Registers `tiresias config` subcommands used to read and update persisted
+ * workspace/boards paths.
+ */
 export function registerConfig(program: Command) {
   const config = program
     .command("config")

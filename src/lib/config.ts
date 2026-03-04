@@ -14,6 +14,9 @@ const tiresiasConfigSchema = z
 
 export type TiresiasConfig = z.infer<typeof tiresiasConfigSchema>;
 
+/**
+ * Resolves the base config directory using XDG when available.
+ */
 function getConfigDirectory() {
   if (process.env.XDG_CONFIG_HOME) {
     return resolve(process.env.XDG_CONFIG_HOME);
@@ -21,10 +24,17 @@ function getConfigDirectory() {
   return resolve(homedir(), ".config");
 }
 
+/**
+ * Absolute path to the persisted CLI config file.
+ */
 export function getConfigFilePath() {
   return resolve(getConfigDirectory(), CONFIG_DIRECTORY_NAME, CONFIG_FILE_NAME);
 }
 
+/**
+ * Parses unknown input into a validated config object.
+ * Invalid or extra keys are ignored by returning an empty config.
+ */
 function parseConfig(content: unknown): TiresiasConfig {
   const parsed = tiresiasConfigSchema.safeParse(content);
   if (!parsed.success) {
@@ -33,6 +43,10 @@ function parseConfig(content: unknown): TiresiasConfig {
   return parsed.data;
 }
 
+/**
+ * Reads persisted CLI config from disk.
+ * Returns an empty object when the file is missing or malformed.
+ */
 export async function readConfig(): Promise<TiresiasConfig> {
   const configPath = getConfigFilePath();
   if (!existsSync(configPath)) {
@@ -47,6 +61,9 @@ export async function readConfig(): Promise<TiresiasConfig> {
   }
 }
 
+/**
+ * Writes a validated config object to disk.
+ */
 export async function writeConfig(config: TiresiasConfig) {
   const configPath = getConfigFilePath();
   await mkdir(dirname(configPath), { recursive: true });
@@ -54,6 +71,9 @@ export async function writeConfig(config: TiresiasConfig) {
   await writeFile(configPath, `${JSON.stringify(parsedConfig, null, 2)}\n`, "utf8");
 }
 
+/**
+ * Merges a partial patch into persisted config while preserving existing keys.
+ */
 export async function updateConfig(patch: Partial<TiresiasConfig>) {
   const current = await readConfig();
   const next: TiresiasConfig = { ...current };
