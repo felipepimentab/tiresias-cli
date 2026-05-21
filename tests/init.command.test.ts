@@ -182,13 +182,18 @@ describe("init command", () => {
     const westInvocations = readText(westLog);
     expect(westInvocations).toContain("init -m");
     expect(westInvocations).not.toContain(":: update");
+    const gitInvocations = readText(resolve(root, "git.log"));
+    expect(gitInvocations).toContain("clone https://github.com/felipepimentab/tiresias-boards");
+    expect(gitInvocations).not.toContain("tiresias-adau1787");
 
     const config = JSON.parse(readText(resolve(xdgConfigHome, "tiresias-cli", "config.json"))) as {
       workspacePath: string;
       boardsPath: string;
+      sigmaPath?: string;
     };
     expect(config.workspacePath).toBe(resolve(parent, "tiresias-workspace"));
     expect(config.boardsPath).toBe(resolve(parent, "boards"));
+    expect(config.sigmaPath).toBeUndefined();
   });
 
   it("honors config safeguards when another configured workspace already exists", () => {

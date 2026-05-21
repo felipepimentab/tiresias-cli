@@ -1,11 +1,15 @@
 Usage: tiresias config [options] [command]
 
-Manage persisted Tiresias CLI configuration
+Manage persisted config in script mode
 
 Options:
   -h, --help      display help for command
 
 Commands:
-  show            Show current persisted configuration
-  set [options]   Persist workspace and/or boards paths globally
+  show            Show current persisted configuration summary
+  set [options]   Persist workspace, boards, and/or SigmaStudio export paths
   help [command]  display help for command
+
+Interactive mode:
+  Run `tiresias`, choose Config, then choose Show config or Update config.
+  Interactive updates prompt for one value at a time and return to the menu.

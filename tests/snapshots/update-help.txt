@@ -1,8 +1,20 @@
-Usage: tiresias update [options]
+Usage: tiresias update [options] [command]
 
 Pull latest changes for tiresias-fw and boards
 
 Options:
   -w, --workspace <path>    West workspace path
   -B, --boards-path <path>  Path to boards repository (outside workspace)
+  -t, --target <target>     Repository target to update: all, firmware, or
+                            boards (default: "all")
+  --dry-run                 Check for upstream changes without pulling (default:
+                            false)
   -h, --help                display help for command
+
+Commands:
+  sigma [options]           Sync SigmaStudio export files into firmware
+                            SigmaStudioFiles
+
+Interactive mode:
+  Run `tiresias`, choose Update, then choose both repositories, firmware only,
+  boards only, or dry run. SigmaStudio export sync is not part of repository updates.

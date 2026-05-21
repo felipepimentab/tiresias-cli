@@ -22,10 +22,11 @@ Alternatively, pre-compiled binaries for Mac, Windows and Linux are available on
 
 ## Commands
 
-- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones the `tiresias-boards` repository into a sibling `boards` directory, and persists both paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
-- `config`: persists and shows global CLI config (workspace and boards paths)
+- `init`: bootstraps required dependencies (with install prompts), creates the Tiresias west workspace, clones `tiresias-boards` into a sibling `boards` directory, and persists workspace/boards paths in CLI config (`--force` to overwrite existing repos, `--skip-west-update` to skip module sync)
+- `config`: persists and shows global CLI config (workspace, boards, and SigmaStudio export paths)
 - `doctor`: checks host tools (including nRF Connect for Desktop and NCS toolchain v3.0.1), west workspace, and boards repository location (offers automatic install/clone prompts when missing). Supports `--json` for machine-readable output.
-- `update`: runs `git pull` in `<workspace>/tiresias-fw` and `boards`
+- `update`: updates firmware and/or boards repositories, with a dry-run mode for checking upstream changes
+- `update sigma`: syncs SigmaStudio export files into `<workspace>/tiresias-fw/src/SigmaStudioFiles`
 
 Global options:
 - `--verbose`: show debug execution logs (including subprocess invocation details).
@@ -64,7 +65,7 @@ Manage persisted configuration (`~/.config/tiresias-cli/config.json`).
 
 Subcommands:
 - `tiresias config show`: prints config file path and persisted values.
-- `tiresias config set --workspace <path> --boards-path <path>`: updates one or both persisted values.
+- `tiresias config set --workspace <path> --boards-path <path> --sigma-path <path>`: updates one or more persisted values.
 
 ### `tiresias doctor`
 
@@ -94,16 +95,36 @@ JSON mode:
 
 ### `tiresias update`
 
-Pull latest changes for both repositories.
+Pull latest changes for firmware and/or boards repositories.
 
 Options:
 - `--workspace <path>`: west workspace path.
 - `--boards-path <path>`: path to boards repository.
+- `--target <all|firmware|boards>`: choose which repository target to update (default `all`).
+- `--dry-run`: fetch and check whether selected repositories are behind upstream without pulling.
 
 Behavior:
 - resolves `tiresias-fw` at `<workspace>/tiresias-fw`.
-- runs `git pull` in both `<workspace>/tiresias-fw` and `boards`.
+- runs `git pull` in selected repositories.
+- in dry-run mode, runs `git fetch` and reports whether selected repositories are behind upstream.
 - updates persisted config with resolved paths after successful update.
+
+Interactive mode:
+- choose `Update` from the main menu.
+- read the brief update description.
+- choose both repositories, firmware only, boards only, or dry run.
+
+### `tiresias update sigma`
+
+Update SigmaStudio exported files from a local export directory.
+
+Options:
+- `--workspace <path>`: west workspace path.
+- `--sigma-path <path>`: path to the SigmaStudio export directory containing generated files.
+
+Behavior:
+- copies all files from the SigmaStudio export directory into `<workspace>/tiresias-fw/src/SigmaStudioFiles` (overwriting same-name files).
+- updates persisted config with resolved workspace and SigmaStudio export paths after success.
 
 ## Tiresias FW Onboarding
 
@@ -122,7 +143,7 @@ This creates:
 - `./tiresias-workspace` (west workspace with `tiresias-fw`)
 - `./boards` (boards repo, outside workspace)
 
-It also automatically saves these paths in `~/.config/tiresias-cli/config.json`.
+It also automatically saves the workspace and boards paths in `~/.config/tiresias-cli/config.json`.
 
 Optional `init` flags:
 - `--force`: removes existing workspace/boards directories and recreates them.
@@ -172,23 +193,24 @@ You can still set environment variables to override defaults:
 ```bash
 export TIRESIAS_WORKSPACE="$HOME/path/to/tiresias-workspace"
 export TIRESIAS_BOARDS_PATH="$HOME/path/to/boards"
+export TIRESIAS_SIGMA_PATH="$HOME/path/to/sigma-studio-export"
 tiresias doctor
 ```
 
 Manually persist values globally (only needed to change existing config):
 
 ```bash
-tiresias config set --workspace ./tiresias-workspace --boards-path ./boards
+tiresias config set --workspace ./tiresias-workspace --boards-path ./boards --sigma-path ./sigma-studio-export
 tiresias config show
 ```
 
 The doctor command expects boards to be outside the west workspace.
 
-Resolution precedence for workspace/boards paths:
-1. CLI flags (`--workspace`, `--boards-path`)
-2. Environment variables (`TIRESIAS_WORKSPACE`, `TIRESIAS_BOARDS_PATH`)
+Resolution precedence for workspace, boards, and SigmaStudio export paths:
+1. CLI flags (`--workspace`, `--boards-path`, `--sigma-path`)
+2. Environment variables (`TIRESIAS_WORKSPACE`, `TIRESIAS_BOARDS_PATH`, `TIRESIAS_SIGMA_PATH`)
 3. Persisted config file (`~/.config/tiresias-cli/config.json`)
-4. Automatic detection/defaults
+4. Automatic detection/defaults where available
 
 The CLI logs which source resolved each path so behavior is explicit.
 
@@ -196,6 +218,12 @@ Update both repositories:
 
 ```bash
 tiresias update --workspace ./tiresias-workspace --boards-path ./boards
+```
+
+Update SigmaStudio files into firmware:
+
+```bash
+tiresias update sigma --workspace ./tiresias-workspace --sigma-path ./sigma-studio-export
 ```
 
 ## Testing

@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { resolve } from "node:path";
 import { ENV_VARS } from "../src/lib/constants";
-import { resolveBoardsPath, resolveWorkspacePath } from "../src/lib/path-resolution";
+import {
+  resolveBoardsPath,
+  resolveSigmaPath,
+  resolveWorkspacePath,
+} from "../src/lib/path-resolution";
 import { makeTempDir, removeDir } from "./helpers";
 
 const tempDirs: string[] = [];
@@ -9,6 +13,7 @@ const tempDirs: string[] = [];
 afterEach(() => {
   delete process.env[ENV_VARS.workspacePath];
   delete process.env[ENV_VARS.boardsPath];
+  delete process.env[ENV_VARS.sigmaPath];
   while (tempDirs.length > 0) {
     removeDir(tempDirs.pop() as string);
   }
@@ -63,5 +68,31 @@ describe("path resolution", () => {
     const derived = resolveBoardsPath({ workspacePath: workspace });
     expect(derived.path).toBe(resolve(workspace, "..", "boards"));
     expect(derived.source).toBe("default");
+  });
+
+  it("resolves sigma path by precedence without a derived default", () => {
+    const root = makeTempDir("tiresias-path-resolution-sigma-");
+    tempDirs.push(root);
+    const fromFlag = resolve(root, "flag-sigma");
+    const fromEnv = resolve(root, "env-sigma");
+    const fromConfig = resolve(root, "config-sigma");
+
+    process.env[ENV_VARS.sigmaPath] = fromEnv;
+    const flag = resolveSigmaPath({ fromFlag, fromConfig });
+    expect(flag.path).toBe(fromFlag);
+    expect(flag.source).toBe("flag");
+
+    const env = resolveSigmaPath({ fromConfig });
+    expect(env.path).toBe(fromEnv);
+    expect(env.source).toBe("env");
+
+    delete process.env[ENV_VARS.sigmaPath];
+    const config = resolveSigmaPath({ fromConfig });
+    expect(config.path).toBe(fromConfig);
+    expect(config.source).toBe("config");
+
+    const unresolved = resolveSigmaPath({});
+    expect(unresolved.path).toBeNull();
+    expect(unresolved.source).toBeNull();
   });
 });

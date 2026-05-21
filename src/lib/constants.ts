@@ -18,6 +18,7 @@ export const REQUIRED_NCS_TOOLCHAIN_VERSION = "3.0.1";
 export const ENV_VARS = {
   workspacePath: "TIRESIAS_WORKSPACE",
   boardsPath: "TIRESIAS_BOARDS_PATH",
+  sigmaPath: "TIRESIAS_SIGMA_PATH",
 } as const;
 
 export const TOOL_INSTALL_URLS = {

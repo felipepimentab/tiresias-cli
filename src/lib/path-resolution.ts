@@ -14,6 +14,11 @@ type BoardsResolutionInput = {
   workspacePath: string | null;
 };
 
+type SigmaResolutionInput = {
+  fromFlag?: string;
+  fromConfig?: string;
+};
+
 /**
  * Resolves workspace path using this precedence:
  * flag -> env -> config -> `west topdir`.
@@ -63,6 +68,27 @@ export function resolveBoardsPath(input: BoardsResolutionInput): ResolvedPath {
       path: resolve(input.workspacePath, "..", DEFAULT_BOARDS_DIRECTORY_NAME),
       source: "default",
     };
+  }
+
+  return { path: null, source: null };
+}
+
+/**
+ * Resolves sigma path using this precedence:
+ * flag -> env -> config.
+ */
+export function resolveSigmaPath(input: SigmaResolutionInput): ResolvedPath {
+  if (input.fromFlag) {
+    return { path: resolve(input.fromFlag), source: "flag" };
+  }
+
+  const fromEnv = process.env[ENV_VARS.sigmaPath];
+  if (fromEnv) {
+    return { path: resolve(fromEnv), source: "env" };
+  }
+
+  if (input.fromConfig) {
+    return { path: resolve(input.fromConfig), source: "config" };
   }
 
   return { path: null, source: null };

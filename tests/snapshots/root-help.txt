@@ -1,18 +1,24 @@
 Usage: tiresias [options] [command]
 
-Tiresias firmware development environment checker
+Interactive Tiresias firmware development environment helper
 
 Options:
   -V, --version     output the version number
-  --verbose         Enable verbose logs for command execution (default: false)
-  --quiet           Reduce command output to warnings/errors only (default:
-                    false)
+  --verbose         Enable verbose logs for explicit or menu-run commands
+                    (default: false)
+  --quiet           Reduce explicit or menu-run command output to
+                    warnings/errors only (default: false)
   -h, --help        display help for command
 
 Commands:
-  config            Manage persisted Tiresias CLI configuration
+  config            Manage persisted config in script mode
   doctor [options]  Check development environment
   init [options]    Initialize Tiresias west workspace and clone tiresias-boards
                     as sibling repo
   update [options]  Pull latest changes for tiresias-fw and boards
   help [command]    display help for command
+
+Interactive mode:
+  Run `tiresias` without a command to open the keyboard-driven main menu.
+  Use arrow keys to choose doctor, init, update, config, help, or exit.
+  Commands selected from the menu return to the menu after they finish.

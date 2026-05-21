@@ -9,6 +9,7 @@ const tiresiasConfigSchema = z
   .object({
     workspacePath: z.string().min(1).optional(),
     boardsPath: z.string().min(1).optional(),
+    sigmaPath: z.string().min(1).optional(),
   })
   .strict();
 
@@ -82,6 +83,9 @@ export async function updateConfig(patch: Partial<TiresiasConfig>) {
   }
   if (patch.boardsPath !== undefined) {
     next.boardsPath = patch.boardsPath;
+  }
+  if (patch.sigmaPath !== undefined) {
+    next.sigmaPath = patch.sigmaPath;
   }
   await writeConfig(next);
 }

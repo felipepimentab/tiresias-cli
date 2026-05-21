@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Command } from "commander";
 import {
@@ -89,6 +89,8 @@ export function registerInit(program: Command) {
           await runCommand("west", ["update"], { cwd: workspacePath, quiet: false });
         }
 
+        await configureVSCode(workspacePath);
+
         info(`Cloning tiresias-boards to ${boardsPath}...`);
         await runCommand("git", ["clone", BOARDS_REPO_URL, options.boardsName], {
           cwd: parentPath,
@@ -175,4 +177,18 @@ async function handleExistingDirectory(path: string, label: string, force: boole
 
   warn(`Removing existing ${label} directory: ${path}`);
   await rm(path, { recursive: true, force: true });
+}
+
+async function configureVSCode(workspacePath: string) {
+  const workspaceFolderVar = "$" + "{workspaceFolder}";
+  const settings = {
+    "nrf-connect.applications": [`${workspaceFolderVar}/tiresias-fw`],
+  };
+
+  const vscodePath = resolve(workspacePath, ".vscode");
+  if (!existsSync(vscodePath)) {
+    await mkdir(vscodePath);
+  }
+
+  await writeFile(resolve(vscodePath, "settings.json"), JSON.stringify(settings, null, 2));
 }

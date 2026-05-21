@@ -1,11 +1,11 @@
 # CLI Specification
 
 ## Shared Path Resolution Rules
-Path precedence for workspace/boards:
+Path precedence for workspace, boards, and SigmaStudio export paths:
 1. CLI flags
 2. environment variables
 3. persisted config (`~/.config/tiresias-cli/config.json`)
-4. default/auto-detection
+4. default/auto-detection where available
 
 Workspace:
 - flag: `--workspace`
@@ -18,6 +18,12 @@ Boards:
 - env: `TIRESIAS_BOARDS_PATH`
 - config: `boardsPath`
 - default: sibling `boards` directory next to workspace
+
+Sigma:
+- flag: `--sigma-path`
+- env: `TIRESIAS_SIGMA_PATH`
+- config: `sigmaPath`
+- no derived default; it points to the user-owned SigmaStudio export directory
 
 ## Global CLI Options
 - `--verbose`: enables debug logs (for example, explicit subprocess command lines).
@@ -133,28 +139,55 @@ flowchart TD
 
 ## `tiresias update`
 Purpose:
-- run `git pull` in both repositories
+- update firmware and/or boards repositories
 
 Inputs:
 - `--workspace <path>`
 - `--boards-path <path>`
+- `--target <all|firmware|boards>` default `all`
+- `--dry-run`
 - plus global `--verbose` / `--quiet`
 
 Side effects:
-- runs `git pull` in `<workspace>/tiresias-fw`
-- runs `git pull` in `<boards>`
+- runs `git pull` in selected repositories unless dry-run is enabled
+- in dry-run mode, runs `git fetch` and checks whether selected repositories are behind upstream
 - updates persisted config with resolved paths
+
+Prompts:
+- interactive mode shows an update submenu for both repositories, firmware only, boards only, and dry run
+
+Outputs:
+- path resolution logs including source
+- update or dry-run status logs
+
+Exit codes:
+- `0` success
+- `1` unresolved paths, invalid repo layout, or git failure
+
+## `tiresias update sigma`
+Purpose:
+- sync SigmaStudio export files into firmware `SigmaStudioFiles`
+
+Inputs:
+- `--workspace <path>`
+- `--sigma-path <path>`
+- plus global `--verbose` / `--quiet`
+
+Side effects:
+- copies all files from the SigmaStudio export directory into `<workspace>/tiresias-fw/src/SigmaStudioFiles`
+- overwrites existing files when names match
+- updates persisted config with resolved workspace and SigmaStudio export paths
 
 Prompts:
 - none
 
 Outputs:
 - path resolution logs including source
-- update status logs
+- sync status logs
 
 Exit codes:
 - `0` success
-- `1` unresolved paths, invalid repo layout, or git failure
+- `1` unresolved paths, invalid layout, or file operation failure
 
 ## `tiresias config show`
 Purpose:
@@ -175,11 +208,12 @@ Exit codes:
 
 ## `tiresias config set`
 Purpose:
-- update persisted `workspacePath` and/or `boardsPath`
+- update persisted `workspacePath` and/or `boardsPath` and/or `sigmaPath`
 
 Inputs:
 - `--workspace <path>` optional
 - `--boards-path <path>` optional
+- `--sigma-path <path>` optional
 
 Side effects:
 - writes config file
@@ -192,4 +226,4 @@ Outputs:
 
 Exit codes:
 - `0` success
-- `1` when both values are omitted
+- `1` when all values are omitted

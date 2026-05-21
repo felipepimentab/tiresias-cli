@@ -30,8 +30,18 @@ describe("config command", () => {
 
     const workspacePath = "/tmp/workspace-a";
     const boardsPath = "/tmp/boards-a";
+    const sigmaPath = "/tmp/sigma-studio-export";
     const setResult = runCli(
-      ["config", "set", "--workspace", workspacePath, "--boards-path", boardsPath],
+      [
+        "config",
+        "set",
+        "--workspace",
+        workspacePath,
+        "--boards-path",
+        boardsPath,
+        "--sigma-path",
+        sigmaPath,
+      ],
       { env: { XDG_CONFIG_HOME: xdgConfigHome } },
     );
     expect(setResult.exitCode).toBe(0);
@@ -43,14 +53,17 @@ describe("config command", () => {
     expect(showResult.exitCode).toBe(0);
     expect(showResult.output).toContain(`workspacePath=${workspacePath}`);
     expect(showResult.output).toContain(`boardsPath=${boardsPath}`);
+    expect(showResult.output).toContain(`sigmaPath=${sigmaPath}`);
 
     const configFile = resolve(xdgConfigHome, "tiresias-cli", "config.json");
     const fileContent = JSON.parse(readText(configFile)) as {
       workspacePath: string;
       boardsPath: string;
+      sigmaPath: string;
     };
     expect(fileContent.workspacePath).toBe(workspacePath);
     expect(fileContent.boardsPath).toBe(boardsPath);
+    expect(fileContent.sigmaPath).toBe(sigmaPath);
   });
 
   it("fails when config set is called without values", () => {
